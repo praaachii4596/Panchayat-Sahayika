@@ -47,6 +47,8 @@
 //     </div>
 //   );
 // }
+
+
 // src/components/layout/AppShell.jsx
 import HeaderMain from "./HeaderMain.jsx";
 import ChatBubble from "../ui/ChatBubble.jsx";   // ← ADD THIS
