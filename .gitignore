@@ -48,3 +48,23 @@ qdrant_data/
 backend/panchayat_users.db
 *.sqlite
 *.db
+
+
+
+# Python virtual environment
+backend/venv/
+
+# Qdrant data (local DB)
+qdrant_data/
+*.sqlite
+*.db
+
+# TTS output
+tts_output/
+
+# Node modules
+node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
