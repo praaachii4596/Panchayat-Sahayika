@@ -66,7 +66,7 @@ export default function RegisterScreen() {
     } catch (err) {
       console.error(err);
       setError(
-        isHi ? "पंजीकरण असफल रहा, कृपया फिर से प्रयास करें।" : err.message || "Registration failed"
+        isHi ? "पंजीकरण असफल रहा, कृपया फिर से प्रयास करें।" : err.message || "Registration failed, please try again."
       );
     } finally {
       setSubmitting(false);

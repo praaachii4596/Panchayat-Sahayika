@@ -3413,18 +3413,7 @@ export default function ChatScreen() {
       }
 
       const recognition = new SpeechRecognition();
-<<<<<<< HEAD
-
-      // English ke liye EN, baaki sab (Hindi/Hinglish/Garhwali) ke liye HI
-      if (uiLang === "en") {
-        recognition.lang = "en-IN";
-      } else {
-        recognition.lang = "hi-IN";
-      }
-
-=======
       recognition.lang = "hi-IN";
->>>>>>> 2022a3691b16446a688402e42e8bdbddc86a2fee
       recognition.interimResults = false;
 
       recognition.onstart = () => setListening(true);
@@ -3456,18 +3445,7 @@ export default function ChatScreen() {
     setInput("");
     setSpeakingKey(null);
     setCopiedKey(null);
-<<<<<<< HEAD
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current = null;
-    }
-=======
     if (typeof window !== "undefined" && window.speechSynthesis) window.speechSynthesis.cancel();
->>>>>>> 2022a3691b16446a688402e42e8bdbddc86a2fee
   }
 
   function handleDeleteChat(chatId, e) {
@@ -3613,18 +3591,7 @@ export default function ChatScreen() {
     setActiveChatId(chatId);
     setSpeakingKey(null);
     setCopiedKey(null);
-<<<<<<< HEAD
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current = null;
-    }
-=======
     if (typeof window !== "undefined" && window.speechSynthesis) window.speechSynthesis.cancel();
->>>>>>> 2022a3691b16446a688402e42e8bdbddc86a2fee
   }
 
   if (!activeChat) return null;
