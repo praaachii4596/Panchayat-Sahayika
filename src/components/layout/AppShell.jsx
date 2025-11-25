@@ -49,25 +49,71 @@
 // }
 
 
-// src/components/layout/AppShell.jsx
 import HeaderMain from "./HeaderMain.jsx";
-import ChatBubble from "../ui/ChatBubble.jsx";   // ← ADD THIS
-import { Outlet } from "react-router-dom";      // ← only needed if you use <Outlet />
+import ChatBubble from "../ui/ChatBubble.jsx";
+import { Outlet } from "react-router-dom";
 
 export default function AppShell({ children }) {
   return (
-    <div className="h-screen flex flex-col bg-softBeige text-gray-900">
-      {/* Top navbar (poora HeaderMain jaisa hai waise hi rahega) */}
+    <div className="min-h-screen flex flex-col">
+
+      {/* HEADER */}
       <HeaderMain />
 
-      {/* Main area: full width, no mx-auto / no px-6 */}
-      <main className="flex-1 overflow-auto">
-        {/* If routing uses children, use children. If using <Outlet />, fallback to Outlet */}
+      {/* SCROLLABLE MAIN CONTENT */}
+      <main
+        className="
+          flex-1 overflow-y-auto 
+          bg-background-light dark:bg-background-dark 
+          transition-colors
+          pb-24      /* <-- Add this */
+        "
+      >
         {children || <Outlet />}
       </main>
 
-      {/* Floating chatbot bubble on all pages except home & chat */}
+      {/* FLOATING CHAT BUBBLE */}
       <ChatBubble />
+
+      {/* FOOTER */}
+      <footer
+        className="
+          fixed bottom-0 w-full
+          flex justify-center 
+          border-t border-border-light dark:border-border-dark
+          bg-card-light dark:bg-card-dark
+          text-text-light dark:text-text-dark
+          z-50
+        "
+      >
+        <div className="w-full max-w-6xl px-4 py-8">
+          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+
+            {/* COPYRIGHT */}
+            <p className="text-sm text-text-light/70 dark:text-text-dark/70">
+              © 2025 Panchayat Sahayika. All rights reserved.
+            </p>
+
+            {/* FOOTER LINKS */}
+            <div className="flex gap-6">
+              <a
+                className="text-sm font-medium hover:text-primary dark:hover:text-primary"
+                href="#"
+              >
+                गोपनीयता नीति / Privacy Policy
+              </a>
+
+              <a
+                className="text-sm font-medium hover:text-primary dark:hover:text-primary"
+                href="#"
+              >
+                संपर्क करें / Contact Us
+              </a>
+            </div>
+
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
