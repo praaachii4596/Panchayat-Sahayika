@@ -1,26 +1,24 @@
 // // src/screens/ChatScreen.jsx
-// import { useEffect, useState } from "react";
+// import React, { useEffect, useState, useRef } from "react";
 // import { useNavigate } from "react-router-dom";
 // import AnswerCard from "../components/ui/AnswerCard.jsx";
 // import { useAuth } from "../auth/useAuth.jsx";
+// import { useLanguage } from "../context/LanguageContext.jsx";
 // import SCHEMES from "../data/samaj_kalyan_vibhag_clean_typed.json";
 
-// // Configure API base once; override via .env: VITE_API_BASE=http://127.0.0.1:8000
+// // ⬇️ NEW: use the same RightSidebar as SidebarContainer
+// import RightSidebar from "../components/layout/RightSidebar.jsx";
+
 // const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 // const API_URL = `${API_BASE}/ask`;
-
-// // Base key for localStorage
 // const STORAGE_KEY_BASE = "ps_chats_v1";
 
-// // Initial welcome message for every new chat
 // const WELCOME_MESSAGE = {
 //   from: "bot",
 //   type: "text",
-//   text:
-//     "नमस्ते! मैं आपकी पंचायत सहायिका हूं। Aap apna sawal bolkar ya likhkar pooch sakte hain.",
+//   text: "नमस्ते! मैं आपकी पंचायत सहायिका हूं। Aap apna sawal bolkar ya likhkar pooch sakte hain – हिन्दी, गढ़वाली ya English mein.",
 // };
 
-// // Helper to make a new empty chat
 // function createNewChat() {
 //   return {
 //     id: `chat_${Date.now()}`,
@@ -30,95 +28,62 @@
 //   };
 // }
 
-// // ------- Scheme details modal (same idea as finder screen) -------
+// /* --------------------- Scheme Details Modal --------------------- */
 // function SchemeDetailsModal({ scheme, onClose }) {
 //   if (!scheme) return null;
 
-//   const fields = [
-//     ["TYPE", "type"],
-//     ["CATEGORY", "category"],
-//     ["DEPARTMENT", "department"],
-//     ["ELIGIBILITY", "eligibility"],
-//     ["BENEFIT", "benefit"],
-//     ["APPLY PROCESS", "apply_process"],
-//     ["SOURCE", "source"],
-//     ["LANGUAGE", "language"],
-//   ];
-
 //   return (
-//     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
-//       <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6 md:p-8">
+//     <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center px-4">
+//       <div className="relative bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl">
 //         <button
-//           type="button"
 //           onClick={onClose}
-//           className="absolute right-4 top-4 text-xl text-gray-400 hover:text-gray-600"
-//           aria-label="Close"
+//           className="absolute right-4 top-4 text-2xl text-gray-400 hover:text-gray-600"
 //         >
 //           ✕
 //         </button>
 
-//         {/* Title */}
-//         <h2 className="text-2xl font-semibold mb-1">
-//           {scheme.name_hi || scheme.name_en || "Scheme details"}
+//         <h2 className="text-xl font-bold mb-1">
+//           {scheme.name_hi || scheme.name_en}
 //         </h2>
 //         {scheme.name_en && (
-//           <p className="text-sm text-gray-600 mb-3">{scheme.name_en}</p>
+//           <p className="text-sm text-gray-600 mb-2">{scheme.name_en}</p>
 //         )}
 
-//         {/* Meta line */}
 //         <p className="text-xs text-gray-500 mb-4">
-//           Scheme / Yojana{" "}
-//           {scheme.category ? `• ${scheme.category}` : ""}{" "}
-//           {scheme.department ? `• ${scheme.department}` : ""}
+//           {scheme.category ? scheme.category + " • " : ""}
+//           {scheme.department || ""}
 //         </p>
 
-//         {/* Descriptions */}
 //         {scheme.description_hi && (
 //           <div className="mb-3">
-//             <h3 className="text-sm font-semibold mb-1">विवरण (Hindi)</h3>
-//             <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">
+//             <h3 className="font-semibold text-sm mb-1">विवरण (Hindi)</h3>
+//             <p className="text-sm whitespace-pre-line">
 //               {scheme.description_hi}
 //             </p>
 //           </div>
 //         )}
-
 //         {scheme.description_en && (
-//           <div className="mb-4">
-//             <h3 className="text-sm font-semibold mb-1">Description (English)</h3>
-//             <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">
+//           <div>
+//             <h3 className="font-semibold text-sm mb-1">
+//               Description (English)
+//             </h3>
+//             <p className="text-sm whitespace-pre-line">
 //               {scheme.description_en}
 //             </p>
 //           </div>
 //         )}
-
-//         {/* Grid of extra fields */}
-//         <div className="mt-2 grid gap-4 md:grid-cols-2 text-sm">
-//           {fields.map(([label, key]) => {
-//             const value = scheme[key];
-//             if (!value) return null;
-//             return (
-//               <div key={key}>
-//                 <div className="text-[11px] font-semibold tracking-wide text-gray-500 mb-1">
-//                   {label}
-//                 </div>
-//                 <div className="whitespace-pre-line text-gray-800">
-//                   {value}
-//                 </div>
-//               </div>
-//             );
-//           })}
-//         </div>
 //       </div>
 //     </div>
 //   );
 // }
 
-// // ======================== CHAT SCREEN ========================
+// /* ========================= MAIN SCREEN ========================= */
 // export default function ChatScreen() {
 //   const navigate = useNavigate();
 //   const { user } = useAuth();
+//   const { lang } = useLanguage();
+//   const isHi = lang === "hi";
 
-//   // 🔑 storage key is per-user now
 //   const storageKey = user?.username
 //     ? `${STORAGE_KEY_BASE}_${user.username}`
 //     : `${STORAGE_KEY_BASE}_guest`;
@@ -129,121 +94,161 @@
 //   const [input, setInput] = useState("");
 //   const [loading, setLoading] = useState(false);
 
-//   // 🔤 UI language (Hindi / English)
-//   const [uiLang, setUiLang] = useState("hi"); // "hi" or "en"
+//   // Chatbot answer language
+//   const [uiLang, setUiLang] = useState("hi");
 
-//   // 🎤 Mic listening status
+//   // Voice features
 //   const [listening, setListening] = useState(false);
-
-//   // 🔈 / 📋 per-message state
 //   const [speakingKey, setSpeakingKey] = useState(null);
 //   const [copiedKey, setCopiedKey] = useState(null);
+//   const audioRef = useRef(null);
+//   const [voices, setVoices] = useState([]);
 
-//   // 👁️ show/hide sidebar
-//   const [showSidebar, setShowSidebar] = useState(true);
-
-//   // 💡 currently opened scheme (for popup)
+//   // UI state
 //   const [selectedScheme, setSelectedScheme] = useState(null);
-
-//   // ---------- helpers for scheme popup & filtering ----------
-
-//   // common function: try to find a matching scheme in JSON for a label
-//   function getSchemeByLabel(label) {
-//     if (!label) return null;
-
-//     const norm = label
-//       .replace(/[()]/g, "")
-//       .trim()
-//       .toLowerCase();
-
-//     const match =
-//       SCHEMES.find((s) => {
-//         const hi = String(s.name_hi || "").toLowerCase();
-//         const en = String(s.name_en || "").toLowerCase();
-//         return (
-//           hi === norm ||
-//           en === norm ||
-//           hi.includes(norm) ||
-//           en.includes(norm)
-//         );
-//       }) || null;
-
-//     return match;
-//   }
-
-//   function openSchemeByName(label) {
-//     const match = getSchemeByLabel(label);
-//     if (match) {
-//       setSelectedScheme(match);
-//     } else {
-//       console.warn("Scheme not found for pill:", label);
-//     }
-//   }
-
-//   // ---------- Load chats from localStorage on first mount ----------
-//   useEffect(() => {
-//     try {
-//       const raw = localStorage.getItem(storageKey);
-//       if (raw) {
-//         const parsed = JSON.parse(raw);
-//         const loadedChats = Array.isArray(parsed.chats) ? parsed.chats : [];
-//         if (loadedChats.length > 0) {
-//           setChats(loadedChats);
-//           setActiveChatId(parsed.activeChatId || loadedChats[0].id);
-//           return;
-//         }
-//       }
-//     } catch (err) {
-//       console.error("Failed to load chats from storage:", err);
-//     }
-
-//     // If nothing in storage for this key, create first chat
-//     const firstChat = createNewChat();
-//     setChats([firstChat]);
-//     setActiveChatId(firstChat.id);
-//   }, [storageKey]);
-
-//   // ---------- Persist chats to localStorage whenever they change ----------
-//   useEffect(() => {
-//     if (!chats.length) return;
-//     try {
-//       localStorage.setItem(
-//         storageKey,
-//         JSON.stringify({ chats, activeChatId })
-//       );
-//     } catch (err) {
-//       console.error("Failed to save chats:", err);
-//     }
-//   }, [chats, activeChatId, storageKey]);
 
 //   const activeChat =
 //     chats.find((c) => c.id === activeChatId) || chats[0] || null;
 //   const messages = activeChat?.messages || [];
 
-//   // ---------- Helper functions ----------
+//   /* --------------------- Load browser voices --------------------- */
+//   useEffect(() => {
+//     if (typeof window === "undefined" || !window.speechSynthesis) return;
 
-//   // HTML -> plain text (copy + TTS ke liye)
+//     const synth = window.speechSynthesis;
+
+//     function loadVoices() {
+//       const vs = synth.getVoices();
+//       if (vs && vs.length) setVoices(vs);
+//     }
+
+//     loadVoices();
+//     synth.onvoiceschanged = loadVoices;
+//     return () => {
+//       synth.onvoiceschanged = null;
+//     };
+//   }, []);
+
+//   /* --------------------- Helpers --------------------- */
 //   function stripHtml(html) {
 //     const tmp = document.createElement("div");
 //     tmp.innerHTML = html;
 //     return tmp.textContent || tmp.innerText || "";
 //   }
 
-//   // Small helper to remove "Apply / Read More" line from bot HTML
 //   function stripApplyReadMore(html) {
 //     if (!html) return html;
 //     return html.replace(/Apply\s*\/\s*Read More[^<]*/gi, "");
 //   }
 
-//   // 🔈 Text aloud padhne ke liye (Web Speech API)
+//   function getSchemeByLabel(label) {
+//     if (!label) return null;
+//     const norm = label.replace(/[()]/g, "").trim().toLowerCase();
+
+//     return (
+//       SCHEMES.find((s) => {
+//         const hi = String(s.name_hi || "").toLowerCase();
+//         const en = String(s.name_en || "").toLowerCase();
+//         return (
+//           hi === norm || en === norm || hi.includes(norm) || en.includes(norm)
+//         );
+//       }) || null
+//     );
+//   }
+
+//   // For source pills (more lenient)
+//   function findScheme(label) {
+//     if (!label) return null;
+//     const l = label.toLowerCase();
+//     return (
+//       SCHEMES.find(
+//         (s) =>
+//           (s.name_hi || "").toLowerCase().includes(l) ||
+//           (s.name_en || "").toLowerCase().includes(l)
+//       ) || null
+//     );
+//   }
+
+//   /* --------------------- Load chats on mount --------------------- */
+//   useEffect(() => {
+//     try {
+//       const raw = localStorage.getItem(storageKey);
+//       if (raw) {
+//         const parsed = JSON.parse(raw);
+//         const loaded = Array.isArray(parsed.chats) ? parsed.chats : [];
+//         if (loaded.length > 0) {
+//           setChats(loaded);
+//           setActiveChatId(parsed.activeChatId || loaded[0].id);
+//           return;
+//         }
+//       }
+//     } catch (err) {
+//       console.error("Failed to load chats:", err);
+//     }
+
+//     const first = createNewChat();
+//     setChats([first]);
+//     setActiveChatId(first.id);
+//   }, [storageKey]);
+
+//   /* --------------------- Persist chats --------------------- */
+//   useEffect(() => {
+//     if (!chats.length) return;
+//     try {
+//       localStorage.setItem(storageKey, JSON.stringify({ chats, activeChatId }));
+//     } catch (err) {
+//       console.error("Failed to save chats:", err);
+//     }
+//   }, [chats, activeChatId, storageKey]);
+
+//   /* --------------------- Voice: Speak answer --------------------- */
 //   function handleSpeak(msgKey, msg) {
 //     try {
-//       if (typeof window === "undefined" || !window.speechSynthesis) {
-//         alert("Aapka browser voice output support nahi karta.");
+//       // 1) If server audio_url present (Garhwali TTS)
+//       if (msg.audio_url) {
+//         if (speakingKey === msgKey && audioRef.current) {
+//           audioRef.current.pause();
+//           audioRef.current.currentTime = 0;
+//           audioRef.current = null;
+//           setSpeakingKey(null);
+//           return;
+//         }
+
+//         if (audioRef.current) {
+//           audioRef.current.pause();
+//           audioRef.current.currentTime = 0;
+//         }
+
+//         const audio = new Audio(
+//           msg.audio_url.startsWith("http")
+//             ? msg.audio_url
+//             : `${API_BASE}${msg.audio_url}`
+//         );
+//         audioRef.current = audio;
+//         setSpeakingKey(msgKey);
+
+//         audio.onended = () => {
+//           setSpeakingKey((curr) => (curr === msgKey ? null : curr));
+//           audioRef.current = null;
+//         };
+
+//         audio.play().catch((err) => {
+//           console.error("Failed to play TTS audio:", err);
+//           setSpeakingKey(null);
+//         });
 //         return;
 //       }
 
-//       // Agar yehi message already bol raha hai → stop
+//       // 2) Browser TTS fallback
+//       if (typeof window === "undefined" || !window.speechSynthesis) {
+//         alert(
+//           isHi
+//             ? "आपका ब्राउज़र वॉइस सपोर्ट नहीं करता।"
+//             : "Your browser doesn't support TTS."
+//         );
+//         return;
+//       }
+
 //       if (speakingKey === msgKey) {
 //         window.speechSynthesis.cancel();
 //         setSpeakingKey(null);
@@ -254,17 +259,29 @@
 //       if (!plainText.trim()) return;
 
 //       const utterance = new SpeechSynthesisUtterance(plainText);
-
-//       // Devanagari ho to Hindi, warna UI language ke hisaab se
 //       const hasDevanagari = /[\u0900-\u097F]/.test(plainText);
+//       const synth = window.speechSynthesis;
+
+//       let selectedVoice = null;
+
 //       if (msg.lang === "en" && !hasDevanagari) {
 //         utterance.lang = "en-IN";
+//         selectedVoice =
+//           voices.find((v) => v.lang?.toLowerCase().startsWith("en-in")) ||
+//           voices.find((v) => v.lang?.toLowerCase().startsWith("en")) ||
+//           null;
 //       } else {
 //         utterance.lang = "hi-IN";
+//         selectedVoice =
+//           voices.find((v) => v.lang?.toLowerCase().startsWith("hi")) ||
+//           voices.find((v) => v.lang?.toLowerCase().includes("hi-in")) ||
+//           null;
 //       }
 
-//       window.speechSynthesis.cancel();
-//       window.speechSynthesis.speak(utterance);
+//       if (selectedVoice) utterance.voice = selectedVoice;
+
+//       synth.cancel();
+//       synth.speak(utterance);
 //       setSpeakingKey(msgKey);
 //       utterance.onend = () => setSpeakingKey(null);
 //     } catch (err) {
@@ -273,7 +290,7 @@
 //     }
 //   }
 
-//   // 📋 Response clipboard pe copy
+//   /* --------------------- Copy answer text --------------------- */
 //   async function handleCopy(msgKey, msg) {
 //     try {
 //       const plainText = stripHtml(msg.text || "");
@@ -282,7 +299,6 @@
 //       if (navigator.clipboard && navigator.clipboard.writeText) {
 //         await navigator.clipboard.writeText(plainText);
 //       } else {
-//         // fallback
 //         const textarea = document.createElement("textarea");
 //         textarea.value = plainText;
 //         document.body.appendChild(textarea);
@@ -297,11 +313,11 @@
 //       }, 1500);
 //     } catch (err) {
 //       console.error("Copy failed:", err);
-//       alert("Copy karne me dikkat aayi.");
+//       alert(isHi ? "कॉपी विफल हुआ।" : "Copy failed.");
 //     }
 //   }
 
-//   // 🎤 Start voice recognition using Web Speech API
+//   /* --------------------- Mic / Speech input --------------------- */
 //   function startListening() {
 //     try {
 //       const SpeechRecognition =
@@ -309,13 +325,15 @@
 
 //       if (!SpeechRecognition) {
 //         alert(
-//           "आपका ब्राउज़र वॉइस इनपुट सपोर्ट नहीं करता। कृपया Google Chrome का इस्तेमाल करें।"
+//           isHi
+//             ? "आपका ब्राउज़र वॉइस इनपुट सपोर्ट नहीं करता।"
+//             : "Your browser does not support voice input."
 //         );
 //         return;
 //       }
 
 //       const recognition = new SpeechRecognition();
-//       recognition.lang = "hi-IN"; // Hindi; use "hi-IN,en-US" for Hinglish
+//       recognition.lang = "hi-IN";
 //       recognition.interimResults = false;
 
 //       recognition.onstart = () => setListening(true);
@@ -324,8 +342,6 @@
 //       recognition.onresult = (event) => {
 //         const speechText = event.results?.[0]?.[0]?.transcript ?? "";
 //         if (!speechText) return;
-
-//         // Mic se jo bola, use input box me daal do
 //         setInput((prev) =>
 //           prev ? `${prev.trimEnd()} ${speechText}` : speechText
 //         );
@@ -334,7 +350,9 @@
 //       recognition.onerror = (err) => {
 //         console.error("Speech recognition error:", err);
 //         setListening(false);
-//         alert("Mic error: " + (err?.error ?? "unknown"));
+//         alert(
+//           (isHi ? "माइक त्रुटि: " : "Mic error: ") + (err?.error ?? "unknown")
+//         );
 //       };
 
 //       recognition.start();
@@ -344,10 +362,11 @@
 //     }
 //   }
 
+//   /* --------------------- Chat management --------------------- */
 //   function handleNewChat() {
-//     const newChat = createNewChat();
-//     setChats((prev) => [...prev, newChat]);
-//     setActiveChatId(newChat.id);
+//     const nc = createNewChat();
+//     setChats((prev) => [...prev, nc]);
+//     setActiveChatId(nc.id);
 //     setInput("");
 //     setSpeakingKey(null);
 //     setCopiedKey(null);
@@ -360,34 +379,37 @@
 //     e.stopPropagation();
 //     setChats((prev) => {
 //       const filtered = prev.filter((c) => c.id !== chatId);
-
 //       if (filtered.length === 0) {
 //         const nc = createNewChat();
 //         setActiveChatId(nc.id);
 //         return [nc];
 //       }
-
-//       if (chatId === activeChatId) {
-//         setActiveChatId(filtered[0].id);
-//       }
-
+//       if (chatId === activeChatId) setActiveChatId(filtered[0].id);
 //       return filtered;
 //     });
 //   }
 
+//   function handleSelectChat(chatId) {
+//     setActiveChatId(chatId);
+//     setSpeakingKey(null);
+//     setCopiedKey(null);
+//     if (typeof window !== "undefined" && window.speechSynthesis) {
+//       window.speechSynthesis.cancel();
+//     }
+//   }
+
+//   /* --------------------- Send message --------------------- */
 //   async function sendMessage() {
 //     const question = input.trim();
 //     if (!question || loading) return;
 //     if (!activeChatId || !activeChat) return;
 
-//     // Backend ke liye last kuch history messages (sirf text)
 //     const prevMessages = messages || [];
 //     const historyForBackend = prevMessages.slice(-6).map((m) => ({
 //       role: m.from === "user" ? "user" : "assistant",
 //       content: stripHtml(m.text || ""),
 //     }));
 
-//     // 🧍‍♀️ Build user_meta from logged-in user
 //     const userMeta = user
 //       ? {
 //           district: user.district || null,
@@ -403,7 +425,6 @@
 //         }
 //       : null;
 
-//     // 1) User message UI me daal do
 //     const userMsg = { from: "user", type: "text", text: question };
 //     setChats((prev) =>
 //       prev.map((chat) =>
@@ -429,7 +450,6 @@
 //       const res = await fetch(API_URL, {
 //         method: "POST",
 //         headers: { "Content-Type": "application/json" },
-//         // Backend /ask expects { question, ui_lang, mode, history, user_meta }
 //         body: JSON.stringify({
 //           question,
 //           ui_lang: uiLang,
@@ -443,2015 +463,9 @@
 //         throw new Error(`API error: ${res.status} ${res.statusText}`);
 
 //       const data = await res.json();
-
-//       let botMsg;
-//       if (data.message || data.cards) {
-//         botMsg = {
-//           from: "bot",
-//           type: "answer+cards",
-//           text: stripApplyReadMore(data.message || ""),
-//           cards: Array.isArray(data.cards) ? data.cards : [],
-//           lang: uiLang,
-//           sources: Array.isArray(data.sources) ? data.sources : [],
-//         };
-//       } else {
-//         botMsg = {
-//           from: "bot",
-//           type: "answer",
-//           text: stripApplyReadMore(data.response || ""),
-//           sources: Array.isArray(data.sources) ? data.sources : [],
-//           lang: uiLang,
-//         };
-//       }
-
-//       setChats((prev) =>
-//         prev.map((chat) =>
-//           chat.id === activeChatId
-//             ? { ...chat, messages: [...chat.messages, botMsg] }
-//             : chat
-//         )
+//       const responseHtml = stripApplyReadMore(
+//         data.message || data.response || ""
 //       );
-//     } catch (e) {
-//       console.error(e);
-//       const errorMsg = {
-//         from: "bot",
-//         type: "text",
-//         text:
-//           "माफ़ कीजिए, सर्वर से कनेक्शन नहीं हो पाया। कृपया थोड़ी देर बाद पुनः प्रयास करें।",
-//       };
-//       setChats((prev) =>
-//         prev.map((chat) =>
-//           chat.id === activeChatId
-//             ? { ...chat, messages: [...chat.messages, errorMsg] }
-//             : chat
-//         )
-//       );
-//     } finally {
-//       setLoading(false);
-//     }
-//   }
-
-//   function handleKeyDown(e) {
-//     if (e.key === "Enter" && !e.shiftKey) {
-//       e.preventDefault();
-//       sendMessage();
-//     }
-//   }
-
-//   function handleSelectChat(chatId) {
-//     setActiveChatId(chatId);
-//     setSpeakingKey(null);
-//     setCopiedKey(null);
-//     if (typeof window !== "undefined" && window.speechSynthesis) {
-//       window.speechSynthesis.cancel();
-//     }
-//   }
-
-//   if (!activeChat) return null;
-
-//   return (
-//     <>
-//       {/* Full height; AppShell main already has h-screen & overflow-hidden */}
-//       <section className="h-full w-full flex gap-4 overflow-hidden">
-//         {/* Left: chat history sidebar */}
-//         <aside
-//           className={[
-//             "bg-white rounded-3xl shadow-md flex flex-col transition-all duration-200",
-//             showSidebar ? "w-64 p-4" : "w-0 p-0",
-//           ].join(" ")}
-//         >
-//           {showSidebar && (
-//             <>
-//               <div className="flex items-center justify-between mb-3">
-//                 <button
-//                   type="button"
-//                   onClick={handleNewChat}
-//                   className="text-xs px-3 py-2 rounded-full bg-[#166534] text-white hover:bg-[#14532d]"
-//                 >
-//                   + New chat
-//                 </button>
-//                 {/* hide history icon */}
-//                 <button
-//                   type="button"
-//                   onClick={() => setShowSidebar(false)}
-//                   className="w-7 h-7 text-xs rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
-//                   title="Hide history"
-//                 >
-//                   ✕
-//                 </button>
-//               </div>
-
-//               <div className="flex-1 overflow-y-auto space-y-1 text-xs">
-//                 {chats.map((chat) => (
-//                   <button
-//                     key={chat.id}
-//                     type="button"
-//                     onClick={() => handleSelectChat(chat.id)}
-//                     className={`w-full text-left px-3 py-2 rounded-2xl border flex items-center justify-between gap-2 ${
-//                       chat.id === activeChatId
-//                         ? "bg-[#E6F4EA] border-[#166534] text-gray-900"
-//                         : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
-//                     }`}
-//                   >
-//                     <div className="flex-1 min-w-0">
-//                       <div className="truncate font-medium">{chat.title}</div>
-//                       <div className="text-[10px] text-gray-400">
-//                         {new Date(chat.createdAt).toLocaleDateString()}
-//                       </div>
-//                     </div>
-//                     <button
-//                       type="button"
-//                       onClick={(e) => handleDeleteChat(chat.id, e)}
-//                       className="ml-1 text-[11px] text-red-500 hover:text-red-700"
-//                       title="Delete chat"
-//                     >
-//                       🗑
-//                     </button>
-//                   </button>
-//                 ))}
-//               </div>
-//             </>
-//           )}
-//         </aside>
-
-//         {/* Middle + right column */}
-//         <div className="flex-1 flex gap-4 overflow-hidden">
-//           {/* Middle: language toggle + chat UI */}
-//           <div className="flex-1 flex flex-col gap-3">
-//             {/* Top row: sidebar icon + language toggle */}
-//             <div className="w-full flex items-center justify-between pr-4">
-//               <button
-//                 type="button"
-//                 onClick={() => setShowSidebar((s) => !s)}
-//                 className="w-8 h-8 rounded-full bg-white shadow flex items-center justify-center text-sm"
-//                 title={showSidebar ? "Hide history" : "Show history"}
-//               >
-//                 ☰
-//               </button>
-
-//               <div className="flex gap-2 text-[11px] ml-auto">
-//                 <button
-//                   type="button"
-//                   onClick={() => setUiLang("hi")}
-//                   className={`px-3 py-1 rounded-full border text-xs ${
-//                     uiLang === "hi"
-//                       ? "bg-[#166534] text-white border-[#166534]"
-//                       : "bg-white text-gray-700 border-gray-300"
-//                   }`}
-//                 >
-//                   हिन्दी / Hinglish
-//                 </button>
-//                 <button
-//                   type="button"
-//                   onClick={() => setUiLang("en")}
-//                   className={`px-3 py-1 rounded-full border text-xs ${
-//                     uiLang === "en"
-//                       ? "bg-[#166534] text-white border-[#166534]"
-//                       : "bg-white text-gray-700 border-gray-300"
-//                   }`}
-//                 >
-//                   English
-//                 </button>
-//               </div>
-//             </div>
-
-//             {/* Chat area – only this scrolls */}
-//             <div className="flex-1 flex justify-center overflow-hidden">
-//               <div className="w-full max-w-3xl bg-white rounded-3xl shadow-md p-4 flex flex-col gap-3 overflow-y-auto">
-//                 {messages.map((msg, idx) => {
-//                   const msgKey = `${activeChatId}-${idx}`;
-
-//                   // User bubble
-//                   if (msg.from === "user") {
-//                     return (
-//                       <div
-//                         key={msgKey}
-//                         className="self-end bg-[#166534] text-white text-xs rounded-2xl px-3 py-2 max-w-[60%]"
-//                       >
-//                         {msg.text}
-//                       </div>
-//                     );
-//                   }
-
-//                   // Bot answer: plain text + optional cards + optional scheme pills
-//                   if (msg.type === "answer+cards") {
-//                     return (
-//                       <div
-//                         key={msgKey}
-//                         className="self-start max-w-[85%] flex flex-col gap-2"
-//                       >
-//                         <div className="bg-[#E6F4EA] text-[10px] text-gray-800 rounded-2xl px-3 py-1 inline-block">
-//                           🤖 Panchayat Sahayika
-//                         </div>
-
-//                         <AnswerCard>
-//                           {/* Header row: speaker + copy */}
-//                           <div className="flex items-center justify-between mb-1">
-//                             <span className="text-[10px] text-gray-500">
-//                               Panchayat Sahayika ka jawab
-//                             </span>
-//                             <div className="flex items-center gap-1">
-//                               <button
-//                                 type="button"
-//                                 onClick={() => handleSpeak(msgKey, msg)}
-//                                 className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]"
-//                                 title={
-//                                   speakingKey === msgKey
-//                                     ? "Bolna band karein"
-//                                     : "Jawab सुनें"
-//                                 }
-//                               >
-//                                 {speakingKey === msgKey ? "⏹" : "🔈"}
-//                               </button>
-//                               <button
-//                                 type="button"
-//                                 onClick={() => handleCopy(msgKey, msg)}
-//                                 className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]"
-//                                 title="Copy karein"
-//                               >
-//                                 📋
-//                               </button>
-//                               {copiedKey === msgKey && (
-//                                 <span className="text-[10px] text-gray-500">
-//                                   Copied
-//                                 </span>
-//                               )}
-//                             </div>
-//                           </div>
-
-//                           {/* actual answer HTML */}
-//                           <div
-//                             className="text-xs leading-relaxed whitespace-pre-line"
-//                             dangerouslySetInnerHTML={{ __html: msg.text }}
-//                           />
-
-//                           {/* scheme pills from sources (only those present in JSON) */}
-//                           {msg.sources?.length > 0 && (
-//                             <div className="mt-2 flex flex-wrap gap-1">
-//                               {msg.sources.map((s, i) => {
-//                                 const label = s.name_hi || s.name_en;
-//                                 const hasData = getSchemeByLabel(label);
-//                                 if (!hasData) return null;
-//                                 return (
-//                                   <button
-//                                     key={i}
-//                                     type="button"
-//                                     onClick={() => openSchemeByName(label)}
-//                                     className="px-3 py-1 bg-[#ECFDF5] text-[10px] text-[#166534] rounded-full border border-[#BBF7D0] cursor-pointer hover:bg-[#D1F1DE]"
-//                                   >
-//                                     {label}
-//                                   </button>
-//                                 );
-//                               })}
-//                             </div>
-//                           )}
-
-//                           {/* minimal scheme cards from msg.cards (no Apply/Read, only those present in JSON) */}
-//                           {msg.cards?.length > 0 && (
-//                             <div className="mt-3 space-y-2">
-//                               {msg.cards.map((c, i) => {
-//                                 const label = c.title_hi || c.title;
-//                                 const hasData = getSchemeByLabel(label);
-//                                 if (!hasData) return null;
-//                                 return (
-//                                   <button
-//                                     key={i}
-//                                     type="button"
-//                                     onClick={() => openSchemeByName(label)}
-//                                     className="w-full text-left border border-[#E5E7EB] rounded-2xl bg-[#F9FAFB] px-3 py-2 hover:bg-white hover:shadow-sm transition cursor-pointer"
-//                                   >
-//                                     <div className="text-xs font-semibold text-gray-900">
-//                                       {c.title}
-//                                     </div>
-//                                     {c.subtitle && (
-//                                       <div className="text-[11px] text-gray-600 mt-0.5">
-//                                         {c.subtitle}
-//                                       </div>
-//                                     )}
-//                                   </button>
-//                                 );
-//                               })}
-//                             </div>
-//                           )}
-//                         </AnswerCard>
-//                       </div>
-//                     );
-//                   }
-
-//                   // Bot answer: text + sources (old shape)
-//                   if (msg.type === "answer") {
-//                     return (
-//                       <div
-//                         key={msgKey}
-//                         className="self-start max-w-[80%] flex flex-col gap-2"
-//                       >
-//                         <div className="bg-[#E6F4EA] text-[10px] text-gray-800 rounded-2xl px-3 py-1 inline-block">
-//                           🤖 Panchayat Sahayika
-//                         </div>
-//                         <AnswerCard>
-//                           <div className="flex items-center justify-between mb-1">
-//                             <span className="text-[10px] text-gray-500">
-//                               Panchayat Sahayika ka jawab
-//                             </span>
-//                             <div className="flex items-center gap-1">
-//                               <button
-//                                 type="button"
-//                                 onClick={() => handleSpeak(msgKey, msg)}
-//                                 className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]"
-//                                 title={
-//                                   speakingKey === msgKey
-//                                     ? "Bolna band karein"
-//                                     : "Jawab सुनें"
-//                                 }
-//                               >
-//                                 {speakingKey === msgKey ? "⏹" : "🔈"}
-//                               </button>
-//                               <button
-//                                 type="button"
-//                                 onClick={() => handleCopy(msgKey, msg)}
-//                                 className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]"
-//                                 title="Copy karein"
-//                               >
-//                                 📋
-//                               </button>
-//                               {copiedKey === msgKey && (
-//                                 <span className="text-[10px] text-gray-500">
-//                                   Copied
-//                                 </span>
-//                               )}
-//                             </div>
-//                           </div>
-
-//                           <div
-//                             className="text-xs leading-relaxed whitespace-pre-line"
-//                             dangerouslySetInnerHTML={{ __html: msg.text }}
-//                           />
-
-//                           {msg.sources?.length > 0 && (
-//                             <div className="mt-2 flex flex-wrap gap-1">
-//                               {msg.sources.map((s, i) => {
-//                                 const label = s.name_hi || s.name_en;
-//                                 const hasData = getSchemeByLabel(label);
-//                                 if (!hasData) return null;
-//                                 return (
-//                                   <button
-//                                     key={i}
-//                                     type="button"
-//                                     onClick={() => openSchemeByName(label)}
-//                                     className="px-3 py-1 bg-[#ECFDF5] text-[10px] text-[#166534] rounded-full border border-[#BBF7D0] cursor-pointer hover:bg-[#D1F1DE]"
-//                                   >
-//                                     {label}
-//                                   </button>
-//                                 );
-//                               })}
-//                             </div>
-//                           )}
-//                         </AnswerCard>
-//                       </div>
-//                     );
-//                   }
-
-//                   // Simple bot bubble (initial greeting)
-//                   return (
-//                     <div
-//                       key={msgKey}
-//                       className="self-start bg-[#E6F4EA] text-xs text-gray-800 rounded-2xl px-3 py-2 max-w-[70%]"
-//                     >
-//                       <div className="font-semibold mb-1">
-//                         🤖 Panchayat Sahayika
-//                       </div>
-//                       <div>{msg.text}</div>
-//                     </div>
-//                   );
-//                 })}
-
-//                 {loading && (
-//                   <div className="self-start bg-[#E6F4EA] text-[10px] text-gray-600 rounded-2xl px-3 py-1 max-w-[40%]">
-//                     सोच रही हूँ...
-//                   </div>
-//                 )}
-//               </div>
-//             </div>
-
-//             {/* Input bar – stays at bottom of this column */}
-//             <div className="w-full max-w-3xl bg-white border-t border-gray-200 px-3 py-3 rounded-t-3xl flex items-center gap-3">
-//               {/* 🎤 Mic button with listening state */}
-//               <button
-//                 className="w-10 h-10 rounded-full bg-[#166534] text-white flex items-center justify-center text-sm"
-//                 type="button"
-//                 onClick={startListening}
-//                 title="Voice input"
-//               >
-//                 {listening ? "🔴" : "🎙️"}
-//               </button>
-
-//               <input
-//                 className="flex-1 px-4 py-2 rounded-full border border-gray-300 text-xs outline-none"
-//                 placeholder="Type your question... / अपना सवाल यहाँ लिखें..."
-//                 value={input}
-//                 onChange={(e) => setInput(e.target.value)}
-//                 onKeyDown={handleKeyDown}
-//               />
-
-//               <button
-//                 className="w-10 h-10 rounded-full bg-[#166534] text-white flex items-center justify-center text-sm disabled:opacity-60"
-//                 type="button"
-//                 onClick={sendMessage}
-//                 disabled={loading || !input.trim()}
-//                 title="Send"
-//               >
-//                 ➤
-//               </button>
-//             </div>
-
-//             {/* optional “listening…” text below bar */}
-//             {listening && (
-//               <div className="text-[11px] text-green-700 pl-14 pb-2">
-//                 🎙️ मैं आपकी बात सुन रही हूँ... साफ़-साफ़ बोलिए।
-//               </div>
-//             )}
-//           </div>
-
-//           {/* Right side: 3 cards (Schemes + Trainings + Planning Tool) */}
-//           <div className="w-80 flex flex-col gap-4 pr-4 pt-10">
-//             {/* Card 1: Find Schemes & Services */}
-//             <button
-//               type="button"
-//               onClick={() => navigate("/finder")}
-//               className="bg-white rounded-3xl shadow-md border border-[#F4E3C3] px-4 py-4 text-left hover:shadow-lg transition cursor-pointer"
-//             >
-//               <div className="text-xs font-semibold text-[#166534] mb-1">
-//                 योजनाएँ / सेवाएँ / प्रोग्राम
-//               </div>
-//               <div className="text-sm font-semibold mb-1">
-//                 Find Schemes &amp; Services
-//               </div>
-//               <p className="text-[11px] text-gray-600 leading-relaxed">
-//                 अपने गाँव, जाति, सेवा या अन्य विवरण के आधार पर आपके लिए उपलब्ध
-//                 सरकारी योजनाएँ देखें।
-//               </p>
-//             </button>
-
-//             {/* Card 2: Panchayat Trainings Finder */}
-//             <button
-//               type="button"
-//               onClick={() => navigate("/my-panchayat/trainings")}
-//               className="bg-white rounded-3xl shadow-md border border-[#F4E3C3] px-4 py-4 text-left hover:shadow-lg transition cursor-pointer"
-//             >
-//               <div className="text-xs font-semibold text-[#166534] mb-1">
-//                 प्रशिक्षण / क्षमता विकास
-//               </div>
-//               <div className="text-sm font-semibold mb-1">
-//                 Panchayat Trainings Finder
-//               </div>
-//               <p className="text-[11px] text-gray-600 leading-relaxed">
-//                 District और Block के हिसाब से सभी पंचायत trainings एक ही जगह पर
-//                 देखें।
-//               </p>
-//             </button>
-
-//             {/* Card 3: Smart Gram Planning Tool */}
-//             <button
-//               type="button"
-//               onClick={() => navigate("/my-panchayat/planning")}
-//               className="bg-white rounded-3xl shadow-md border border-[#F4E3C3] px-4 py-4 text-left hover:shadow-lg transition cursor-pointer"
-//             >
-//               <div className="text-xs font-semibold text-[#166534] mb-1">
-//                 Smart Gram Planning
-//               </div>
-//               <div className="text-sm font-semibold mb-1">
-//                 Smart Gram Planning Tool
-//               </div>
-//               <p className="text-[11px] text-gray-600 leading-relaxed">
-//                 Village infra deficit index के आधार पर development priorities और
-//                 सुझाए गए projects देखें।
-//               </p>
-//             </button>
-//           </div>
-//         </div>
-//       </section>
-
-//       {/* Scheme popup */}
-//       <SchemeDetailsModal
-//         scheme={selectedScheme}
-//         onClose={() => setSelectedScheme(null)}
-//       />
-//     </>
-//   );
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// // src/screens/ChatScreen.jsx
-// import { useEffect, useState } from "react";
-// import { useNavigate } from "react-router-dom";
-// import AnswerCard from "../components/ui/AnswerCard.jsx";
-// import { useAuth } from "../auth/useAuth.jsx";
-// import SCHEMES from "../data/samaj_kalyan_vibhag_clean_typed.json";
-
-// // Configure API base once; override via .env: VITE_API_BASE=http://127.0.0.1:8000
-// const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
-// const API_URL = `${API_BASE}/ask`;
-
-// // Base key for localStorage
-// const STORAGE_KEY_BASE = "ps_chats_v1";
-
-// // Initial welcome message for every new chat
-// const WELCOME_MESSAGE = {
-//   from: "bot",
-//   type: "text",
-//   text:
-//     "नमस्ते! मैं आपकी पंचायत सहायिका हूं। Aap apna sawal bolkar ya likhkar pooch sakte hain – हिन्दी, गढ़वाली ya English mein.",
-// };
-
-// // Helper to make a new empty chat
-// function createNewChat() {
-//   return {
-//     id: `chat_${Date.now()}`,
-//     title: "New chat",
-//     createdAt: Date.now(),
-//     messages: [WELCOME_MESSAGE],
-//   };
-// }
-
-// // ------- Scheme details modal (same idea as finder screen) -------
-// function SchemeDetailsModal({ scheme, onClose }) {
-//   if (!scheme) return null;
-
-//   const fields = [
-//     ["TYPE", "type"],
-//     ["CATEGORY", "category"],
-//     ["DEPARTMENT", "department"],
-//     ["ELIGIBILITY", "eligibility"],
-//     ["BENEFIT", "benefit"],
-//     ["APPLY PROCESS", "apply_process"],
-//     ["SOURCE", "source"],
-//     ["LANGUAGE", "language"],
-//   ];
-
-//   return (
-//     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
-//       <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6 md:p-8">
-//         <button
-//           type="button"
-//           onClick={onClose}
-//           className="absolute right-4 top-4 text-xl text-gray-400 hover:text-gray-600"
-//           aria-label="Close"
-//         >
-//           ✕
-//         </button>
-
-//         {/* Title */}
-//         <h2 className="text-2xl font-semibold mb-1">
-//           {scheme.name_hi || scheme.name_en || "Scheme details"}
-//         </h2>
-//         {scheme.name_en && (
-//           <p className="text-sm text-gray-600 mb-3">{scheme.name_en}</p>
-//         )}
-
-//         {/* Meta line */}
-//         <p className="text-xs text-gray-500 mb-4">
-//           Scheme / Yojana{" "}
-//           {scheme.category ? `• ${scheme.category}` : ""}{" "}
-//           {scheme.department ? `• ${scheme.department}` : ""}
-//         </p>
-
-//         {/* Descriptions */}
-//         {scheme.description_hi && (
-//           <div className="mb-3">
-//             <h3 className="text-sm font-semibold mb-1">विवरण (Hindi)</h3>
-//             <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">
-//               {scheme.description_hi}
-//             </p>
-//           </div>
-//         )}
-
-//         {scheme.description_en && (
-//           <div className="mb-4">
-//             <h3 className="text-sm font-semibold mb-1">Description (English)</h3>
-//             <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">
-//               {scheme.description_en}
-//             </p>
-//           </div>
-//         )}
-
-//         {/* Grid of extra fields */}
-//         <div className="mt-2 grid gap-4 md:grid-cols-2 text-sm">
-//           {fields.map(([label, key]) => {
-//             const value = scheme[key];
-//             if (!value) return null;
-//             return (
-//               <div key={key}>
-//                 <div className="text-[11px] font-semibold tracking-wide text-gray-500 mb-1">
-//                   {label}
-//                 </div>
-//                 <div className="whitespace-pre-line text-gray-800">
-//                   {value}
-//                 </div>
-//               </div>
-//             );
-//           })}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// // ======================== CHAT SCREEN ========================
-// export default function ChatScreen() {
-//   const navigate = useNavigate();
-//   const { user } = useAuth();
-
-//   // 🔑 storage key is per-user now
-//   const storageKey = user?.username
-//     ? `${STORAGE_KEY_BASE}_${user.username}`
-//     : `${STORAGE_KEY_BASE}_guest`;
-
-//   const [chats, setChats] = useState([]);
-//   const [activeChatId, setActiveChatId] = useState(null);
-
-//   const [input, setInput] = useState("");
-//   const [loading, setLoading] = useState(false);
-
-//   // 🔤 UI language (Hindi / Garhwali / English)
-//   // "hi" = Hindi/Hinglish, "garhwali" = Garhwali, "en" = English
-//   const [uiLang, setUiLang] = useState("hi");
-
-//   // 🎤 Mic listening status
-//   const [listening, setListening] = useState(false);
-
-//   // 🔈 / 📋 per-message state
-//   const [speakingKey, setSpeakingKey] = useState(null);
-//   const [copiedKey, setCopiedKey] = useState(null);
-
-//   // 👁️ show/hide sidebar
-//   const [showSidebar, setShowSidebar] = useState(true);
-
-//   // 💡 currently opened scheme (for popup)
-//   const [selectedScheme, setSelectedScheme] = useState(null);
-
-//   // ---------- helpers for scheme popup & filtering ----------
-
-//   // common function: try to find a matching scheme in JSON for a label
-//   function getSchemeByLabel(label) {
-//     if (!label) return null;
-
-//     const norm = label
-//       .replace(/[()]/g, "")
-//       .trim()
-//       .toLowerCase();
-
-//     const match =
-//       SCHEMES.find((s) => {
-//         const hi = String(s.name_hi || "").toLowerCase();
-//         const en = String(s.name_en || "").toLowerCase();
-//         return (
-//           hi === norm ||
-//           en === norm ||
-//           hi.includes(norm) ||
-//           en.includes(norm)
-//         );
-//       }) || null;
-
-//     return match;
-//   }
-
-//   function openSchemeByName(label) {
-//     const match = getSchemeByLabel(label);
-//     if (match) {
-//       setSelectedScheme(match);
-//     } else {
-//       console.warn("Scheme not found for pill:", label);
-//     }
-//   }
-
-//   // ---------- Load chats from localStorage on first mount ----------
-//   useEffect(() => {
-//     try {
-//       const raw = localStorage.getItem(storageKey);
-//       if (raw) {
-//         const parsed = JSON.parse(raw);
-//         const loadedChats = Array.isArray(parsed.chats) ? parsed.chats : [];
-//         if (loadedChats.length > 0) {
-//           setChats(loadedChats);
-//           setActiveChatId(parsed.activeChatId || loadedChats[0].id);
-//           return;
-//         }
-//       }
-//     } catch (err) {
-//       console.error("Failed to load chats from storage:", err);
-//     }
-
-//     // If nothing in storage for this key, create first chat
-//     const firstChat = createNewChat();
-//     setChats([firstChat]);
-//     setActiveChatId(firstChat.id);
-//   }, [storageKey]);
-
-//   // ---------- Persist chats to localStorage whenever they change ----------
-//   useEffect(() => {
-//     if (!chats.length) return;
-//     try {
-//       localStorage.setItem(
-//         storageKey,
-//         JSON.stringify({ chats, activeChatId })
-//       );
-//     } catch (err) {
-//       console.error("Failed to save chats:", err);
-//     }
-//   }, [chats, activeChatId, storageKey]);
-
-//   const activeChat =
-//     chats.find((c) => c.id === activeChatId) || chats[0] || null;
-//   const messages = activeChat?.messages || [];
-
-//   // ---------- Helper functions ----------
-
-//   // HTML -> plain text (copy + TTS ke liye)
-//   function stripHtml(html) {
-//     const tmp = document.createElement("div");
-//     tmp.innerHTML = html;
-//     return tmp.textContent || tmp.innerText || "";
-//   }
-
-//   // Small helper to remove "Apply / Read More" line from bot HTML
-//   function stripApplyReadMore(html) {
-//     if (!html) return html;
-//     return html.replace(/Apply\s*\/\s*Read More[^<]*/gi, "");
-//   }
-
-//   // 🔈 Text aloud padhne ke liye (Web Speech API)
-//   function handleSpeak(msgKey, msg) {
-//     try {
-//       if (typeof window === "undefined" || !window.speechSynthesis) {
-//         alert("Aapka browser voice output support nahi karta.");
-//         return;
-//       }
-
-//       // Agar yehi message already bol raha hai → stop
-//       if (speakingKey === msgKey) {
-//         window.speechSynthesis.cancel();
-//         setSpeakingKey(null);
-//         return;
-//       }
-
-//       const plainText = stripHtml(msg.text || "");
-//       if (!plainText.trim()) return;
-
-//       const utterance = new SpeechSynthesisUtterance(plainText);
-
-//       // Devanagari ho to Hindi, warna English
-//       const hasDevanagari = /[\u0900-\u097F]/.test(plainText);
-//       if (msg.lang === "en" && !hasDevanagari) {
-//         utterance.lang = "en-IN";
-//       } else {
-//         // yahan Hindi voice Garhwali + Hindi + Hinglish sab ke liye chalegi
-//         utterance.lang = "hi-IN";
-//       }
-
-//       window.speechSynthesis.cancel();
-//       window.speechSynthesis.speak(utterance);
-//       setSpeakingKey(msgKey);
-//       utterance.onend = () => setSpeakingKey(null);
-//     } catch (err) {
-//       console.error("TTS error:", err);
-//       setSpeakingKey(null);
-//     }
-//   }
-
-//   // 📋 Response clipboard pe copy
-//   async function handleCopy(msgKey, msg) {
-//     try {
-//       const plainText = stripHtml(msg.text || "");
-//       if (!plainText.trim()) return;
-
-//       if (navigator.clipboard && navigator.clipboard.writeText) {
-//         await navigator.clipboard.writeText(plainText);
-//       } else {
-//         // fallback
-//         const textarea = document.createElement("textarea");
-//         textarea.value = plainText;
-//         document.body.appendChild(textarea);
-//         textarea.select();
-//         document.execCommand("copy");
-//         document.body.removeChild(textarea);
-//       }
-
-//       setCopiedKey(msgKey);
-//       setTimeout(() => {
-//         setCopiedKey((curr) => (curr === msgKey ? null : curr));
-//       }, 1500);
-//     } catch (err) {
-//       console.error("Copy failed:", err);
-//       alert("Copy karne me dikkat aayi.");
-//     }
-//   }
-
-//   // 🎤 Start voice recognition using Web Speech API
-//   function startListening() {
-//     try {
-//       const SpeechRecognition =
-//         window.SpeechRecognition || window.webkitSpeechRecognition;
-
-//       if (!SpeechRecognition) {
-//         alert(
-//           "आपका ब्राउज़र वॉइस इनपुट सपोर्ट नहीं करता। कृपया Google Chrome का इस्तेमाल करें।"
-//         );
-//         return;
-//       }
-
-//       const recognition = new SpeechRecognition();
-
-//       // English ke liye EN, baaki sab (Hindi/Hinglish/Garhwali) ke liye HI
-//       if (uiLang === "en") {
-//         recognition.lang = "en-IN";
-//       } else {
-//         recognition.lang = "hi-IN";
-//       }
-
-//       recognition.interimResults = false;
-
-//       recognition.onstart = () => setListening(true);
-//       recognition.onend = () => setListening(false);
-
-//       recognition.onresult = (event) => {
-//         const speechText = event.results?.[0]?.[0]?.transcript ?? "";
-//         if (!speechText) return;
-
-//         // Mic se jo bola, use input box me daal do
-//         setInput((prev) =>
-//           prev ? `${prev.trimEnd()} ${speechText}` : speechText
-//         );
-//       };
-
-//       recognition.onerror = (err) => {
-//         console.error("Speech recognition error:", err);
-//         setListening(false);
-//         alert("Mic error: " + (err?.error ?? "unknown"));
-//       };
-
-//       recognition.start();
-//     } catch (err) {
-//       console.error("Speech recognition exception:", err);
-//       setListening(false);
-//     }
-//   }
-
-//   function handleNewChat() {
-//     const newChat = createNewChat();
-//     setChats((prev) => [...prev, newChat]);
-//     setActiveChatId(newChat.id);
-//     setInput("");
-//     setSpeakingKey(null);
-//     setCopiedKey(null);
-//     if (typeof window !== "undefined" && window.speechSynthesis) {
-//       window.speechSynthesis.cancel();
-//     }
-//   }
-
-//   function handleDeleteChat(chatId, e) {
-//     e.stopPropagation();
-//     setChats((prev) => {
-//       const filtered = prev.filter((c) => c.id !== chatId);
-
-//       if (filtered.length === 0) {
-//         const nc = createNewChat();
-//         setActiveChatId(nc.id);
-//         return [nc];
-//       }
-
-//       if (chatId === activeChatId) {
-//         setActiveChatId(filtered[0].id);
-//       }
-
-//       return filtered;
-//     });
-//   }
-
-//   async function sendMessage() {
-//     const question = input.trim();
-//     if (!question || loading) return;
-//     if (!activeChatId || !activeChat) return;
-
-//     // Backend ke liye last kuch history messages (sirf text)
-//     const prevMessages = messages || [];
-//     const historyForBackend = prevMessages.slice(-6).map((m) => ({
-//       role: m.from === "user" ? "user" : "assistant",
-//       content: stripHtml(m.text || ""),
-//     }));
-
-//     // 🧍‍♀️ Build user_meta from logged-in user
-//     const userMeta = user
-//       ? {
-//           district: user.district || null,
-//           block: user.block || null,
-//           village_code: user.village_code || null,
-//           age: user.age || null,
-//           gender: user.gender || null,
-//           interest_tag: user.interest_tag || null,
-//           disability: user.disability || null,
-//           occupation: user.occupation || null,
-//           income_bracket: user.income_bracket || null,
-//           social_category: user.social_category || null,
-//         }
-//       : null;
-
-//     // 1) User message UI me daal do
-//     const userMsg = { from: "user", type: "text", text: question };
-//     setChats((prev) =>
-//       prev.map((chat) =>
-//         chat.id === activeChatId
-//           ? {
-//               ...chat,
-//               title:
-//                 chat.title === "New chat"
-//                   ? question.length > 30
-//                     ? question.slice(0, 30) + "..."
-//                     : question
-//                   : chat.title,
-//               messages: [...chat.messages, userMsg],
-//             }
-//           : chat
-//       )
-//     );
-
-//     setInput("");
-//     setLoading(true);
-
-//     try {
-//       const res = await fetch(API_URL, {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         // Backend /ask expects { question, ui_lang, mode, history, user_meta }
-//         body: JSON.stringify({
-//           question,
-//           ui_lang: uiLang,   // ab "garhwali" bhi ja sakta hai
-//           mode: "auto",
-//           history: historyForBackend,
-//           user_meta: userMeta,
-//         }),
-//       });
-
-//       if (!res.ok)
-//         throw new Error(`API error: ${res.status} ${res.statusText}`);
-
-//       const data = await res.json();
-
-//       let botMsg;
-//       if (data.message || data.cards) {
-//         botMsg = {
-//           from: "bot",
-//           type: "answer+cards",
-//           text: stripApplyReadMore(data.message || ""),
-//           cards: Array.isArray(data.cards) ? data.cards : [],
-//           lang: uiLang, // "hi" | "garhwali" | "en"
-//           sources: Array.isArray(data.sources) ? data.sources : [],
-//         };
-//       } else {
-//         botMsg = {
-//           from: "bot",
-//           type: "answer",
-//           text: stripApplyReadMore(data.response || ""),
-//           sources: Array.isArray(data.sources) ? data.sources : [],
-//           lang: uiLang,
-//         };
-//       }
-
-//       setChats((prev) =>
-//         prev.map((chat) =>
-//           chat.id === activeChatId
-//             ? { ...chat, messages: [...chat.messages, botMsg] }
-//             : chat
-//         )
-//       );
-//     } catch (e) {
-//       console.error(e);
-//       const errorMsg = {
-//         from: "bot",
-//         type: "text",
-//         text:
-//           "माफ़ कीजिए, सर्वर से कनेक्शन नहीं हो पाया। कृपया थोड़ी देर बाद पुनः प्रयास करें।",
-//       };
-//       setChats((prev) =>
-//         prev.map((chat) =>
-//           chat.id === activeChatId
-//             ? { ...chat, messages: [...chat.messages, errorMsg] }
-//             : chat
-//         )
-//       );
-//     } finally {
-//       setLoading(false);
-//     }
-//   }
-
-//   function handleKeyDown(e) {
-//     if (e.key === "Enter" && !e.shiftKey) {
-//       e.preventDefault();
-//       sendMessage();
-//     }
-//   }
-
-//   function handleSelectChat(chatId) {
-//     setActiveChatId(chatId);
-//     setSpeakingKey(null);
-//     setCopiedKey(null);
-//     if (typeof window !== "undefined" && window.speechSynthesis) {
-//       window.speechSynthesis.cancel();
-//     }
-//   }
-
-//   if (!activeChat) return null;
-
-//   return (
-//     <>
-//       {/* Full height; AppShell main already has h-screen & overflow-hidden */}
-//       <section className="h-full w-full flex gap-4 overflow-hidden">
-//         {/* Left: chat history sidebar */}
-//         <aside
-//           className={[
-//             "bg-white rounded-3xl shadow-md flex flex-col transition-all duration-200",
-//             showSidebar ? "w-64 p-4" : "w-0 p-0",
-//           ].join(" ")}
-//         >
-//           {showSidebar && (
-//             <>
-//               <div className="flex items-center justify-between mb-3">
-//                 <button
-//                   type="button"
-//                   onClick={handleNewChat}
-//                   className="text-xs px-3 py-2 rounded-full bg-[#166534] text-white hover:bg-[#14532d]"
-//                 >
-//                   + New chat
-//                 </button>
-//                 {/* hide history icon */}
-//                 <button
-//                   type="button"
-//                   onClick={() => setShowSidebar(false)}
-//                   className="w-7 h-7 text-xs rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
-//                   title="Hide history"
-//                 >
-//                   ✕
-//                 </button>
-//               </div>
-
-//               <div className="flex-1 overflow-y-auto space-y-1 text-xs">
-//                 {chats.map((chat) => (
-//                   <button
-//                     key={chat.id}
-//                     type="button"
-//                     onClick={() => handleSelectChat(chat.id)}
-//                     className={`w-full text-left px-3 py-2 rounded-2xl border flex items-center justify-between gap-2 ${
-//                       chat.id === activeChatId
-//                         ? "bg-[#E6F4EA] border-[#166534] text-gray-900"
-//                         : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
-//                     }`}
-//                   >
-//                     <div className="flex-1 min-w-0">
-//                       <div className="truncate font-medium">{chat.title}</div>
-//                       <div className="text-[10px] text-gray-400">
-//                         {new Date(chat.createdAt).toLocaleDateString()}
-//                       </div>
-//                     </div>
-//                     <button
-//                       type="button"
-//                       onClick={(e) => handleDeleteChat(chat.id, e)}
-//                       className="ml-1 text-[11px] text-red-500 hover:text-red-700"
-//                       title="Delete chat"
-//                     >
-//                       🗑
-//                     </button>
-//                   </button>
-//                 ))}
-//               </div>
-//             </>
-//           )}
-//         </aside>
-
-//         {/* Middle + right column */}
-//         <div className="flex-1 flex gap-4 overflow-hidden">
-//           {/* Middle: language toggle + chat UI */}
-//           <div className="flex-1 flex flex-col gap-3">
-//             {/* Top row: sidebar icon + language toggle */}
-//             <div className="w-full flex items-center justify-between pr-4">
-//               <button
-//                 type="button"
-//                 onClick={() => setShowSidebar((s) => !s)}
-//                 className="w-8 h-8 rounded-full bg-white shadow flex items-center justify-center text-sm"
-//                 title={showSidebar ? "Hide history" : "Show history"}
-//               >
-//                 ☰
-//               </button>
-
-//               <div className="flex gap-2 text-[11px] ml-auto">
-//                 <button
-//                   type="button"
-//                   onClick={() => setUiLang("hi")}
-//                   className={`px-3 py-1 rounded-full border text-xs ${
-//                     uiLang === "hi"
-//                       ? "bg-[#166534] text-white border-[#166534]"
-//                       : "bg-white text-gray-700 border-gray-300"
-//                   }`}
-//                 >
-//                   हिन्दी / Hinglish
-//                 </button>
-//                 <button
-//                   type="button"
-//                   onClick={() => setUiLang("garhwali")}
-//                   className={`px-3 py-1 rounded-full border text-xs ${
-//                     uiLang === "garhwali"
-//                       ? "bg-[#166534] text-white border-[#166534]"
-//                       : "bg-white text-gray-700 border-gray-300"
-//                   }`}
-//                 >
-//                   गढ़वाली
-//                 </button>
-//                 <button
-//                   type="button"
-//                   onClick={() => setUiLang("en")}
-//                   className={`px-3 py-1 rounded-full border text-xs ${
-//                     uiLang === "en"
-//                       ? "bg-[#166534] text-white border-[#166534]"
-//                       : "bg-white text-gray-700 border-gray-300"
-//                   }`}
-//                 >
-//                   English
-//                 </button>
-//               </div>
-//             </div>
-
-//             {/* Chat area – only this scrolls */}
-//             <div className="flex-1 flex justify-center overflow-hidden">
-//               <div className="w-full max-w-3xl bg-white rounded-3xl shadow-md p-4 flex flex-col gap-3 overflow-y-auto">
-//                 {messages.map((msg, idx) => {
-//                   const msgKey = `${activeChatId}-${idx}`;
-
-//                   // User bubble
-//                   if (msg.from === "user") {
-//                     return (
-//                       <div
-//                         key={msgKey}
-//                         className="self-end bg-[#166534] text-white text-xs rounded-2xl px-3 py-2 max-w-[60%]"
-//                       >
-//                         {msg.text}
-//                       </div>
-//                     );
-//                   }
-
-//                   // Bot answer: plain text + optional cards + optional scheme pills
-//                   if (msg.type === "answer+cards") {
-//                     return (
-//                       <div
-//                         key={msgKey}
-//                         className="self-start max-w-[85%] flex flex-col gap-2"
-//                       >
-//                         <div className="bg-[#E6F4EA] text-[10px] text-gray-800 rounded-2xl px-3 py-1 inline-block">
-//                           🤖 Panchayat Sahayika
-//                         </div>
-
-//                         <AnswerCard>
-//                           {/* Header row: speaker + copy */}
-//                           <div className="flex items-center justify-between mb-1">
-//                             <span className="text-[10px] text-gray-500">
-//                               Panchayat Sahayika ka jawab
-//                             </span>
-//                             <div className="flex items-center gap-1">
-//                               <button
-//                                 type="button"
-//                                 onClick={() => handleSpeak(msgKey, msg)}
-//                                 className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]"
-//                                 title={
-//                                   speakingKey === msgKey
-//                                     ? "Bolna band karein"
-//                                     : "Jawab सुनें"
-//                                 }
-//                               >
-//                                 {speakingKey === msgKey ? "⏹" : "🔈"}
-//                               </button>
-//                               <button
-//                                 type="button"
-//                                 onClick={() => handleCopy(msgKey, msg)}
-//                                 className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]"
-//                                 title="Copy karein"
-//                               >
-//                                 📋
-//                               </button>
-//                               {copiedKey === msgKey && (
-//                                 <span className="text-[10px] text-gray-500">
-//                                   Copied
-//                                 </span>
-//                               )}
-//                             </div>
-//                           </div>
-
-//                           {/* actual answer HTML */}
-//                           <div
-//                             className="text-xs leading-relaxed whitespace-pre-line"
-//                             dangerouslySetInnerHTML={{ __html: msg.text }}
-//                           />
-
-//                           {/* scheme pills from sources (only those present in JSON) */}
-//                           {msg.sources?.length > 0 && (
-//                             <div className="mt-2 flex flex-wrap gap-1">
-//                               {msg.sources.map((s, i) => {
-//                                 const label = s.name_hi || s.name_en;
-//                                 const hasData = getSchemeByLabel(label);
-//                                 if (!hasData) return null;
-//                                 return (
-//                                   <button
-//                                     key={i}
-//                                     type="button"
-//                                     onClick={() => openSchemeByName(label)}
-//                                     className="px-3 py-1 bg-[#ECFDF5] text-[10px] text-[#166534] rounded-full border border-[#BBF7D0] cursor-pointer hover:bg-[#D1F1DE]"
-//                                   >
-//                                     {label}
-//                                   </button>
-//                                 );
-//                               })}
-//                             </div>
-//                           )}
-
-//                           {/* minimal scheme cards from msg.cards (no Apply/Read, only those present in JSON) */}
-//                           {msg.cards?.length > 0 && (
-//                             <div className="mt-3 space-y-2">
-//                               {msg.cards.map((c, i) => {
-//                                 const label = c.title_hi || c.title;
-//                                 const hasData = getSchemeByLabel(label);
-//                                 if (!hasData) return null;
-//                                 return (
-//                                   <button
-//                                     key={i}
-//                                     type="button"
-//                                     onClick={() => openSchemeByName(label)}
-//                                     className="w-full text-left border border-[#E5E7EB] rounded-2xl bg-[#F9FAFB] px-3 py-2 hover:bg-white hover:shadow-sm transition cursor-pointer"
-//                                   >
-//                                     <div className="text-xs font-semibold text-gray-900">
-//                                       {c.title}
-//                                     </div>
-//                                     {c.subtitle && (
-//                                       <div className="text-[11px] text-gray-600 mt-0.5">
-//                                         {c.subtitle}
-//                                       </div>
-//                                     )}
-//                                   </button>
-//                                 );
-//                               })}
-//                             </div>
-//                           )}
-//                         </AnswerCard>
-//                       </div>
-//                     );
-//                   }
-
-//                   // Bot answer: text + sources (old shape)
-//                   if (msg.type === "answer") {
-//                     return (
-//                       <div
-//                         key={msgKey}
-//                         className="self-start max-w-[80%] flex flex-col gap-2"
-//                       >
-//                         <div className="bg-[#E6F4EA] text-[10px] text-gray-800 rounded-2xl px-3 py-1 inline-block">
-//                           🤖 Panchayat Sahayika
-//                         </div>
-//                         <AnswerCard>
-//                           <div className="flex items-center justify-between mb-1">
-//                             <span className="text-[10px] text-gray-500">
-//                               Panchayat Sahayika ka jawab
-//                             </span>
-//                             <div className="flex items-center gap-1">
-//                               <button
-//                                 type="button"
-//                                 onClick={() => handleSpeak(msgKey, msg)}
-//                                 className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]"
-//                                 title={
-//                                   speakingKey === msgKey
-//                                     ? "Bolna band karein"
-//                                     : "Jawab सुनें"
-//                                 }
-//                               >
-//                                 {speakingKey === msgKey ? "⏹" : "🔈"}
-//                               </button>
-//                               <button
-//                                 type="button"
-//                                 onClick={() => handleCopy(msgKey, msg)}
-//                                 className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]"
-//                                 title="Copy karein"
-//                               >
-//                                 📋
-//                               </button>
-//                               {copiedKey === msgKey && (
-//                                 <span className="text-[10px] text-gray-500">
-//                                   Copied
-//                                 </span>
-//                               )}
-//                             </div>
-//                           </div>
-
-//                           <div
-//                             className="text-xs leading-relaxed whitespace-pre-line"
-//                             dangerouslySetInnerHTML={{ __html: msg.text }}
-//                           />
-
-//                           {msg.sources?.length > 0 && (
-//                             <div className="mt-2 flex flex-wrap gap-1">
-//                               {msg.sources.map((s, i) => {
-//                                 const label = s.name_hi || s.name_en;
-//                                 const hasData = getSchemeByLabel(label);
-//                                 if (!hasData) return null;
-//                                 return (
-//                                   <button
-//                                     key={i}
-//                                     type="button"
-//                                     onClick={() => openSchemeByName(label)}
-//                                     className="px-3 py-1 bg-[#ECFDF5] text-[10px] text-[#166534] rounded-full border border-[#BBF7D0] cursor-pointer hover:bg-[#D1F1DE]"
-//                                   >
-//                                     {label}
-//                                   </button>
-//                                 );
-//                               })}
-//                             </div>
-//                           )}
-//                         </AnswerCard>
-//                       </div>
-//                     );
-//                   }
-
-//                   // Simple bot bubble (initial greeting)
-//                   return (
-//                     <div
-//                       key={msgKey}
-//                       className="self-start bg-[#E6F4EA] text-xs text-gray-800 rounded-2xl px-3 py-2 max-w-[70%]"
-//                     >
-//                       <div className="font-semibold mb-1">
-//                         🤖 Panchayat Sahayika
-//                       </div>
-//                       <div>{msg.text}</div>
-//                     </div>
-//                   );
-//                 })}
-
-//                 {loading && (
-//                   <div className="self-start bg-[#E6F4EA] text-[10px] text-gray-600 rounded-2xl px-3 py-1 max-w-[40%]">
-//                     सोच रही हूँ...
-//                   </div>
-//                 )}
-//               </div>
-//             </div>
-
-//             {/* Input bar – stays at bottom of this column */}
-//             <div className="w-full max-w-3xl bg-white border-t border-gray-200 px-3 py-3 rounded-t-3xl flex items-center gap-3">
-//               {/* 🎤 Mic button with listening state */}
-//               <button
-//                 className="w-10 h-10 rounded-full bg-[#166534] text-white flex items-center justify-center text-sm"
-//                 type="button"
-//                 onClick={startListening}
-//                 title="Voice input"
-//               >
-//                 {listening ? "🔴" : "🎙️"}
-//               </button>
-
-//               <input
-//                 className="flex-1 px-4 py-2 rounded-full border border-gray-300 text-xs outline-none"
-//                 placeholder="Type your question... / अपना सवाल यहाँ लिखें..."
-//                 value={input}
-//                 onChange={(e) => setInput(e.target.value)}
-//                 onKeyDown={handleKeyDown}
-//               />
-
-//               <button
-//                 className="w-10 h-10 rounded-full bg-[#166534] text-white flex items-center justify-center text-sm disabled:opacity-60"
-//                 type="button"
-//                 onClick={sendMessage}
-//                 disabled={loading || !input.trim()}
-//                 title="Send"
-//               >
-//                 ➤
-//               </button>
-//             </div>
-
-//             {/* optional “listening…” text below bar */}
-//             {listening && (
-//               <div className="text-[11px] text-green-700 pl-14 pb-2">
-//                 🎙️ मैं आपकी बात सुन रही हूँ... साफ़-साफ़ बोलिए।
-//               </div>
-//             )}
-//           </div>
-
-//           {/* Right side: 3 cards (Schemes + Trainings + Planning Tool) */}
-//           <div className="w-80 flex flex-col gap-4 pr-4 pt-10">
-//             {/* Card 1: Find Schemes & Services */}
-//             <button
-//               type="button"
-//               onClick={() => navigate("/finder")}
-//               className="bg-white rounded-3xl shadow-md border border-[#F4E3C3] px-4 py-4 text-left hover:shadow-lg transition cursor-pointer"
-//             >
-//               <div className="text-xs font-semibold text-[#166534] mb-1">
-//                 योजनाएँ / सेवाएँ / प्रोग्राम
-//               </div>
-//               <div className="text-sm font-semibold mb-1">
-//                 Find Schemes &amp; Services
-//               </div>
-//               <p className="text-[11px] text-gray-600 leading-relaxed">
-//                 अपने गाँव, जाति, सेवा या अन्य विवरण के आधार पर आपके लिए उपलब्ध
-//                 सरकारी योजनाएँ देखें।
-//               </p>
-//             </button>
-
-//             {/* Card 2: Panchayat Trainings Finder */}
-//             <button
-//               type="button"
-//               onClick={() => navigate("/my-panchayat/trainings")}
-//               className="bg-white rounded-3xl shadow-md border border-[#F4E3C3] px-4 py-4 text-left hover:shadow-lg transition cursor-pointer"
-//             >
-//               <div className="text-xs font-semibold text-[#166534] mb-1">
-//                 प्रशिक्षण / क्षमता विकास
-//               </div>
-//               <div className="text-sm font-semibold mb-1">
-//                 Panchayat Trainings Finder
-//               </div>
-//               <p className="text-[11px] text-gray-600 leading-relaxed">
-//                 District और Block के हिसाब से सभी पंचायत trainings एक ही जगह पर
-//                 देखें।
-//               </p>
-//             </button>
-
-//             {/* Card 3: Smart Gram Planning Tool */}
-//             <button
-//               type="button"
-//               onClick={() => navigate("/my-panchayat/planning")}
-//               className="bg-white rounded-3xl shadow-md border border-[#F4E3C3] px-4 py-4 text-left hover:shadow-lg transition cursor-pointer"
-//             >
-//               <div className="text-xs font-semibold text-[#166534] mb-1">
-//                 Smart Gram Planning
-//               </div>
-//               <div className="text-sm font-semibold mb-1">
-//                 Smart Gram Planning Tool
-//               </div>
-//               <p className="text-[11px] text-gray-600 leading-relaxed">
-//                 Village infra deficit index के आधार पर development priorities और
-//                 सुझाए गए projects देखें।
-//               </p>
-//             </button>
-//           </div>
-//         </div>
-//       </section>
-
-//       {/* Scheme popup */}
-//       <SchemeDetailsModal
-//         scheme={selectedScheme}
-//         onClose={() => setSelectedScheme(null)}
-//       />
-//     </>
-//   );
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// src/screens/ChatScreen.jsx
-// import { useEffect, useState, useRef } from "react";
-// import { useNavigate } from "react-router-dom";
-// import AnswerCard from "../components/ui/AnswerCard.jsx";
-// import { useAuth } from "../auth/useAuth.jsx";
-// import SCHEMES from "../data/samaj_kalyan_vibhag_clean_typed.json";
-
-// // Configure API base once; override via .env: VITE_API_BASE=http://127.0.0.1:8000
-// const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
-// const API_URL = `${API_BASE}/ask`;
-
-// // Base key for localStorage
-// const STORAGE_KEY_BASE = "ps_chats_v1";
-
-// // Initial welcome message for every new chat
-// const WELCOME_MESSAGE = {
-//   from: "bot",
-//   type: "text",
-//   text:
-//     "नमस्ते! मैं आपकी पंचायत सहायिका हूं। Aap apna sawal bolkar ya likhkar pooch sakte hain – हिन्दी, गढ़वाली ya English mein.",
-// };
-
-// // Helper to make a new empty chat
-// function createNewChat() {
-//   return {
-//     id: `chat_${Date.now()}`,
-//     title: "New chat",
-//     createdAt: Date.now(),
-//     messages: [WELCOME_MESSAGE],
-//   };
-// }
-
-// // ------- Scheme details modal (same idea as finder screen) -------
-// function SchemeDetailsModal({ scheme, onClose }) {
-//   if (!scheme) return null;
-
-//   const fields = [
-//     ["TYPE", "type"],
-//     ["CATEGORY", "category"],
-//     ["DEPARTMENT", "department"],
-//     ["ELIGIBILITY", "eligibility"],
-//     ["BENEFIT", "benefit"],
-//     ["APPLY PROCESS", "apply_process"],
-//     ["SOURCE", "source"],
-//     ["LANGUAGE", "language"],
-//   ];
-
-//   return (
-//     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
-//       <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6 md:p-8">
-//         <button
-//           type="button"
-//           onClick={onClose}
-//           className="absolute right-4 top-4 text-xl text-gray-400 hover:text-gray-600"
-//           aria-label="Close"
-//         >
-//           ✕
-//         </button>
-
-//         {/* Title */}
-//         <h2 className="text-2xl font-semibold mb-1">
-//           {scheme.name_hi || scheme.name_en || "Scheme details"}
-//         </h2>
-//         {scheme.name_en && (
-//           <p className="text-sm text-gray-600 mb-3">{scheme.name_en}</p>
-//         )}
-
-//         {/* Meta line */}
-//         <p className="text-xs text-gray-500 mb-4">
-//           Scheme / Yojana{" "}
-//           {scheme.category ? `• ${scheme.category}` : ""}{" "}
-//           {scheme.department ? `• ${scheme.department}` : ""}
-//         </p>
-
-//         {/* Descriptions */}
-//         {scheme.description_hi && (
-//           <div className="mb-3">
-//             <h3 className="text-sm font-semibold mb-1">विवरण (Hindi)</h3>
-//             <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">
-//               {scheme.description_hi}
-//             </p>
-//           </div>
-//         )}
-
-//         {scheme.description_en && (
-//           <div className="mb-4">
-//             <h3 className="text-sm font-semibold mb-1">Description (English)</h3>
-//             <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">
-//               {scheme.description_en}
-//             </p>
-//           </div>
-//         )}
-
-//         {/* Grid of extra fields */}
-//         <div className="mt-2 grid gap-4 md:grid-cols-2 text-sm">
-//           {fields.map(([label, key]) => {
-//             const value = scheme[key];
-//             if (!value) return null;
-//             return (
-//               <div key={key}>
-//                 <div className="text-[11px] font-semibold tracking-wide text-gray-500 mb-1">
-//                   {label}
-//                 </div>
-//                 <div className="whitespace-pre-line text-gray-800">
-//                   {value}
-//                 </div>
-//               </div>
-//             );
-//           })}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// // ======================== CHAT SCREEN ========================
-// export default function ChatScreen() {
-//   const navigate = useNavigate();
-//   const { user } = useAuth();
-
-//   // 🔑 storage key is per-user now
-//   const storageKey = user?.username
-//     ? `${STORAGE_KEY_BASE}_${user.username}`
-//     : `${STORAGE_KEY_BASE}_guest`;
-
-//   const [chats, setChats] = useState([]);
-//   const [activeChatId, setActiveChatId] = useState(null);
-
-//   const [input, setInput] = useState("");
-//   const [loading, setLoading] = useState(false);
-
-//   // 🔤 UI language (Hindi / Garhwali / English)
-//   // "hi" = Hindi/Hinglish, "garhwali" = Garhwali, "en" = English
-//   const [uiLang, setUiLang] = useState("hi");
-
-//   // 🎤 Mic listening status
-//   const [listening, setListening] = useState(false);
-
-//   // 🔈 / 📋 per-message state
-//   const [speakingKey, setSpeakingKey] = useState(null);
-//   const [copiedKey, setCopiedKey] = useState(null);
-
-//   // Audio ref for Garhwali TTS files
-//   const audioRef = useRef(null);
-
-//   // 👁️ show/hide sidebar
-//   const [showSidebar, setShowSidebar] = useState(true);
-
-//   // 💡 currently opened scheme (for popup)
-//   const [selectedScheme, setSelectedScheme] = useState(null);
-
-//   // ---------- helpers for scheme popup & filtering ----------
-
-//   // common function: try to find a matching scheme in JSON for a label
-//   function getSchemeByLabel(label) {
-//     if (!label) return null;
-
-//     const norm = label
-//       .replace(/[()]/g, "")
-//       .trim()
-//       .toLowerCase();
-
-//     const match =
-//       SCHEMES.find((s) => {
-//         const hi = String(s.name_hi || "").toLowerCase();
-//         const en = String(s.name_en || "").toLowerCase();
-//         return (
-//           hi === norm ||
-//           en === norm ||
-//           hi.includes(norm) ||
-//           en.includes(norm)
-//         );
-//       }) || null;
-
-//     return match;
-//   }
-
-//   function openSchemeByName(label) {
-//     const match = getSchemeByLabel(label);
-//     if (match) {
-//       setSelectedScheme(match);
-//     } else {
-//       console.warn("Scheme not found for pill:", label);
-//     }
-//   }
-
-//   // ---------- Load chats from localStorage on first mount ----------
-//   useEffect(() => {
-//     try {
-//       const raw = localStorage.getItem(storageKey);
-//       if (raw) {
-//         const parsed = JSON.parse(raw);
-//         const loadedChats = Array.isArray(parsed.chats) ? parsed.chats : [];
-//         if (loadedChats.length > 0) {
-//           setChats(loadedChats);
-//           setActiveChatId(parsed.activeChatId || loadedChats[0].id);
-//           return;
-//         }
-//       }
-//     } catch (err) {
-//       console.error("Failed to load chats from storage:", err);
-//     }
-
-//     // If nothing in storage for this key, create first chat
-//     const firstChat = createNewChat();
-//     setChats([firstChat]);
-//     setActiveChatId(firstChat.id);
-//   }, [storageKey]);
-
-//   // ---------- Persist chats to localStorage whenever they change ----------
-//   useEffect(() => {
-//     if (!chats.length) return;
-//     try {
-//       localStorage.setItem(
-//         storageKey,
-//         JSON.stringify({ chats, activeChatId })
-//       );
-//     } catch (err) {
-//       console.error("Failed to save chats:", err);
-//     }
-//   }, [chats, activeChatId, storageKey]);
-
-//   const activeChat =
-//     chats.find((c) => c.id === activeChatId) || chats[0] || null;
-//   const messages = activeChat?.messages || [];
-
-//   // ---------- Helper functions ----------
-
-//   // HTML -> plain text (copy + TTS ke liye)
-//   function stripHtml(html) {
-//     const tmp = document.createElement("div");
-//     tmp.innerHTML = html;
-//     return tmp.textContent || tmp.innerText || "";
-//   }
-
-//   // Small helper to remove "Apply / Read More" line from bot HTML
-//   function stripApplyReadMore(html) {
-//     if (!html) return html;
-//     return html.replace(/Apply\s*\/\s*Read More[^<]*/gi, "");
-//   }
-
-//   // 🔈 Text aloud padhne ke liye
-//   function handleSpeak(msgKey, msg) {
-//     try {
-//       // If we have a server-generated audio_url (Garhwali), use that instead of browser TTS
-//       if (msg.audio_url) {
-//         // Toggle: if same message is already playing, stop it
-//         if (speakingKey === msgKey && audioRef.current) {
-//           audioRef.current.pause();
-//           audioRef.current.currentTime = 0;
-//           audioRef.current = null;
-//           setSpeakingKey(null);
-//           return;
-//         }
-
-//         // Stop any previous audio
-//         if (audioRef.current) {
-//           audioRef.current.pause();
-//           audioRef.current.currentTime = 0;
-//         }
-
-//         const audio = new Audio(`${API_BASE}${msg.audio_url}`);
-//         audioRef.current = audio;
-//         setSpeakingKey(msgKey);
-
-//         audio.onended = () => {
-//           setSpeakingKey((curr) => (curr === msgKey ? null : curr));
-//           audioRef.current = null;
-//         };
-
-//         audio.play().catch((err) => {
-//           console.error("Failed to play Garhwali TTS:", err);
-//           setSpeakingKey(null);
-//         });
-
-//         return;
-//       }
-
-//       // Fallback: browser TTS (for Hindi/English text answers)
-//       if (typeof window === "undefined" || !window.speechSynthesis) {
-//         alert("Aapka browser voice output support nahi karta.");
-//         return;
-//       }
-
-//       // Agar yehi message already bol raha hai → stop
-//       if (speakingKey === msgKey) {
-//         window.speechSynthesis.cancel();
-//         setSpeakingKey(null);
-//         return;
-//       }
-
-//       const plainText = stripHtml(msg.text || "");
-//       if (!plainText.trim()) return;
-
-//       const utterance = new SpeechSynthesisUtterance(plainText);
-
-//       // Devanagari ho to Hindi, warna English
-//       const hasDevanagari = /[\u0900-\u097F]/.test(plainText);
-//       if (msg.lang === "en" && !hasDevanagari) {
-//         utterance.lang = "en-IN";
-//       } else {
-//         // Hindi voice for Hindi/Hinglish/other Indian language text
-//         utterance.lang = "hi-IN";
-//       }
-
-//       window.speechSynthesis.cancel();
-//       window.speechSynthesis.speak(utterance);
-//       setSpeakingKey(msgKey);
-//       utterance.onend = () => setSpeakingKey(null);
-//     } catch (err) {
-//       console.error("TTS error:", err);
-//       setSpeakingKey(null);
-//     }
-//   }
-
-//   // 📋 Response clipboard pe copy
-//   async function handleCopy(msgKey, msg) {
-//     try {
-//       const plainText = stripHtml(msg.text || "");
-//       if (!plainText.trim()) return;
-
-//       if (navigator.clipboard && navigator.clipboard.writeText) {
-//         await navigator.clipboard.writeText(plainText);
-//       } else {
-//         // fallback
-//         const textarea = document.createElement("textarea");
-//         textarea.value = plainText;
-//         document.body.appendChild(textarea);
-//         textarea.select();
-//         document.execCommand("copy");
-//         document.body.removeChild(textarea);
-//       }
-
-//       setCopiedKey(msgKey);
-//       setTimeout(() => {
-//         setCopiedKey((curr) => (curr === msgKey ? null : curr));
-//       }, 1500);
-//     } catch (err) {
-//       console.error("Copy failed:", err);
-//       alert("Copy karne me dikkat aayi.");
-//     }
-//   }
-
-//   // 🎤 Start voice recognition using Web Speech API
-//   function startListening() {
-//     try {
-//       const SpeechRecognition =
-//         window.SpeechRecognition || window.webkitSpeechRecognition;
-
-//       if (!SpeechRecognition) {
-//         alert(
-//           "आपका ब्राउज़र वॉइस इनपुट सपोर्ट नहीं करता। कृपया Google Chrome का इस्तेमाल करें।"
-//         );
-//         return;
-//       }
-
-//       const recognition = new SpeechRecognition();
-
-//       // English ke liye EN, baaki sab (Hindi/Hinglish/Garhwali) ke liye HI
-//       if (uiLang === "en") {
-//         recognition.lang = "en-IN";
-//       } else {
-//         recognition.lang = "hi-IN";
-//       }
-
-//       recognition.interimResults = false;
-
-//       recognition.onstart = () => setListening(true);
-//       recognition.onend = () => setListening(false);
-
-//       recognition.onresult = (event) => {
-//         const speechText = event.results?.[0]?.[0]?.transcript ?? "";
-//         if (!speechText) return;
-
-//         // Mic se jo bola, use input box me daal do
-//         setInput((prev) =>
-//           prev ? `${prev.trimEnd()} ${speechText}` : speechText
-//         );
-//       };
-
-//       recognition.onerror = (err) => {
-//         console.error("Speech recognition error:", err);
-//         setListening(false);
-//         alert("Mic error: " + (err?.error ?? "unknown"));
-//       };
-
-//       recognition.start();
-//     } catch (err) {
-//       console.error("Speech recognition exception:", err);
-//       setListening(false);
-//     }
-//   }
-
-//   function handleNewChat() {
-//     const newChat = createNewChat();
-//     setChats((prev) => [...prev, newChat]);
-//     setActiveChatId(newChat.id);
-//     setInput("");
-//     setSpeakingKey(null);
-//     setCopiedKey(null);
-//     if (typeof window !== "undefined" && window.speechSynthesis) {
-//       window.speechSynthesis.cancel();
-//     }
-//     if (audioRef.current) {
-//       audioRef.current.pause();
-//       audioRef.current.currentTime = 0;
-//       audioRef.current = null;
-//     }
-//   }
-
-//   function handleDeleteChat(chatId, e) {
-//     e.stopPropagation();
-//     setChats((prev) => {
-//       const filtered = prev.filter((c) => c.id !== chatId);
-
-//       if (filtered.length === 0) {
-//         const nc = createNewChat();
-//         setActiveChatId(nc.id);
-//         return [nc];
-//       }
-
-//       if (chatId === activeChatId) {
-//         setActiveChatId(filtered[0].id);
-//       }
-
-//       return filtered;
-//     });
-//   }
-
-//   async function sendMessage() {
-//     const question = input.trim();
-//     if (!question || loading) return;
-//     if (!activeChatId || !activeChat) return;
-
-//     // Backend ke liye last kuch history messages (sirf text)
-//     const prevMessages = messages || [];
-//     const historyForBackend = prevMessages.slice(-6).map((m) => ({
-//       role: m.from === "user" ? "user" : "assistant",
-//       content: stripHtml(m.text || ""),
-//     }));
-
-//     // 🧍‍♀️ Build user_meta from logged-in user
-//     const userMeta = user
-//       ? {
-//           district: user.district || null,
-//           block: user.block || null,
-//           village_code: user.village_code || null,
-//           age: user.age || null,
-//           gender: user.gender || null,
-//           interest_tag: user.interest_tag || null,
-//           disability: user.disability || null,
-//           occupation: user.occupation || null,
-//           income_bracket: user.income_bracket || null,
-//           social_category: user.social_category || null,
-//         }
-//       : null;
-
-//     // 1) User message UI me daal do
-//     const userMsg = { from: "user", type: "text", text: question };
-//     setChats((prev) =>
-//       prev.map((chat) =>
-//         chat.id === activeChatId
-//           ? {
-//               ...chat,
-//               title:
-//                 chat.title === "New chat"
-//                   ? question.length > 30
-//                     ? question.slice(0, 30) + "..."
-//                     : question
-//                   : chat.title,
-//               messages: [...chat.messages, userMsg],
-//             }
-//           : chat
-//       )
-//     );
-
-//     setInput("");
-//     setLoading(true);
-
-//     try {
-//       const res = await fetch(API_URL, {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         // Backend /ask expects { question, ui_lang, mode, history, user_meta }
-//         body: JSON.stringify({
-//           question,
-//           ui_lang: uiLang,   // "hi" | "garhwali" | "en"
-//           mode: "auto",
-//           history: historyForBackend,
-//           user_meta: userMeta,
-//         }),
-//       });
-
-//       if (!res.ok)
-//         throw new Error(`API error: ${res.status} ${res.statusText}`);
-
-//       const data = await res.json();
-
-//       // Support both old style (message/cards) and new AskResponse (response/audio_url/sources)
-//       const responseHtml =
-//         stripApplyReadMore(data.message || data.response || "");
 //       const sources = Array.isArray(data.sources) ? data.sources : [];
 //       const cards = Array.isArray(data.cards) ? data.cards : [];
 //       const audioUrl = data.audio_url || null;
@@ -2463,7 +477,7 @@
 //           type: "answer+cards",
 //           text: responseHtml,
 //           cards,
-//           lang: uiLang, // "hi" | "garhwali" | "en"
+//           lang: uiLang,
 //           sources,
 //           audio_url: audioUrl,
 //         };
@@ -2485,26 +499,14 @@
 //             : chat
 //         )
 //       );
-
-//       // OPTIONAL: Auto-play Garhwali TTS when available
-//       if (audioUrl) {
-//         if (audioRef.current) {
-//           audioRef.current.pause();
-//           audioRef.current.currentTime = 0;
-//         }
-//         const audio = new Audio(`${API_BASE}${audioUrl}`);
-//         audioRef.current = audio;
-//         audio.play().catch((err) => {
-//           console.error("Failed to auto-play Garhwali TTS:", err);
-//         });
-//       }
-//     } catch (e) {
-//       console.error(e);
+//     } catch (err) {
+//       console.error(err);
 //       const errorMsg = {
 //         from: "bot",
 //         type: "text",
-//         text:
-//           "माफ़ कीजिए, सर्वर से कनेक्शन नहीं हो पाया। कृपया थोड़ी देर बाद पुनः प्रयास करें।",
+//         text: isHi
+//           ? "माफ़ कीजिए, सर्वर से कनेक्शन नहीं हो पाया। कृपया थोड़ी देर बाद पुनः प्रयास करें।"
+//           : "Sorry, couldn't connect to the server. Please try again later.",
 //       };
 //       setChats((prev) =>
 //         prev.map((chat) =>
@@ -2518,256 +520,333 @@
 //     }
 //   }
 
-//   function handleKeyDown(e) {
-//     if (e.key === "Enter" && !e.shiftKey) {
-//       e.preventDefault();
-//       sendMessage();
-//     }
-//   }
-
-//   function handleSelectChat(chatId) {
-//     setActiveChatId(chatId);
-//     setSpeakingKey(null);
-//     setCopiedKey(null);
-//     if (typeof window !== "undefined" && window.speechSynthesis) {
-//       window.speechSynthesis.cancel();
-//     }
-//     if (audioRef.current) {
-//       audioRef.current.pause();
-//       audioRef.current.currentTime = 0;
-//       audioRef.current = null;
-//     }
-//   }
-
 //   if (!activeChat) return null;
 
+//   // Simple grouping for "Today" / "Yesterday" in sidebar (visual only)
+//   const today = new Date();
+//   today.setHours(0, 0, 0, 0);
+//   const yesterday = new Date(today);
+//   yesterday.setDate(today.getDate() - 1);
+
+//   const todayChats = chats.filter((c) => {
+//     const d = new Date(c.createdAt);
+//     d.setHours(0, 0, 0, 0);
+//     return d.getTime() === today.getTime();
+//   });
+
+//   const yesterdayChats = chats.filter((c) => {
+//     const d = new Date(c.createdAt);
+//     d.setHours(0, 0, 0, 0);
+//     return d.getTime() === yesterday.getTime();
+//   });
+
+//   const otherChats = chats.filter(
+//     (c) => !todayChats.includes(c) && !yesterdayChats.includes(c)
+//   );
+
+//   // ⬇️ Static three-column grid now (left + center + right)
+//   const gridCols = "grid-cols-[260px_1fr_320px]";
+
+//   /* ======================= UI LAYOUT ======================= */
 //   return (
 //     <>
-//       {/* Full height; AppShell main already has h-screen & overflow-hidden */}
-//       <section className="h-full w-full flex gap-4 overflow-hidden">
-//         {/* Left: chat history sidebar */}
-//         <aside
-//           className={[
-//             "bg-white rounded-3xl shadow-md flex flex-col transition-all duration-200",
-//             showSidebar ? "w-64 p-4" : "w-0 p-0",
-//           ].join(" ")}
+//       <div className="flex h-screen w-full flex-col bg-background-light dark:bg-background-dark font-display text-text-light dark:text-text-dark overflow-hidden">
+//         {/* ========= FIXED HEADER ========= */}
+//         {/* <header className="flex h-16 shrink-0 items-center justify-between border-b border-black/10 dark:border-white/10 px-4 bg-background-light dark:bg-background-dark">
+//           <div className="flex items-center gap-3">
+//             <button
+//               onClick={() => navigate(-1)}
+//               className="flex items-center justify-center size-8 rounded-full hover:bg-black/5 dark:hover:bg-white/5"
+//             >
+//               <span className="material-symbols-outlined text-2xl">
+//                 arrow_back
+//               </span>
+//             </button>
+//             <div className="flex size-9 items-center justify-center rounded-full bg-primary text-white font-bold text-lg">
+//               S
+//             </div>
+//             <h1 className="text-lg font-bold">Panchayat Sahayika (Demo)</h1>
+//           </div> */}
+
+//         {/* <div className="flex items-center gap-4"> */}
+//         {/* App language pill (from global context) */}
+//         {/* <button className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-4 bg-primary/10 dark:bg-primary/20 text-primary dark:text-green-300 text-sm font-bold">
+//               <span>{isHi ? "हिन्दी" : "English"}</span>
+//             </button> */}
+//         {/* Simple avatar from username initial */}
+//         {/* <div className="size-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+//               {(user?.username || "U").charAt(0).toUpperCase()}
+//             </div>
+//           </div>
+//         </header> */}
+
+//         {/* ================= MAIN CONTENT GRID ================= */}
+//         <main
+//           className={`grid flex-1 overflow-hidden ${gridCols} gap-x-4 transition-[grid-template-columns] duration-200`}
 //         >
-//           {showSidebar && (
-//             <>
-//               <div className="flex items-center justify-between mb-3">
-//                 <button
-//                   type="button"
-//                   onClick={handleNewChat}
-//                   className="text-xs px-3 py-2 rounded-full bg-[#166534] text-white hover:bg-[#14532d]"
-//                 >
-//                   + New chat
-//                 </button>
-//                 {/* hide history icon */}
-//                 <button
-//                   type="button"
-//                   onClick={() => setShowSidebar(false)}
-//                   className="w-7 h-7 text-xs rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
-//                   title="Hide history"
-//                 >
-//                   ✕
-//                 </button>
-//               </div>
-
-//               <div className="flex-1 overflow-y-auto space-y-1 text-xs">
-//                 {chats.map((chat) => (
-//                   <button
-//                     key={chat.id}
-//                     type="button"
-//                     onClick={() => handleSelectChat(chat.id)}
-//                     className={`w-full text-left px-3 py-2 rounded-2xl border flex items-center justify-between gap-2 ${
-//                       chat.id === activeChatId
-//                         ? "bg-[#E6F4EA] border-[#166534] text-gray-900"
-//                         : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
-//                     }`}
-//                   >
-//                     <div className="flex-1 min-w-0">
-//                       <div className="truncate font-medium">{chat.title}</div>
-//                       <div className="text-[10px] text-gray-400">
-//                         {new Date(chat.createdAt).toLocaleDateString()}
-//                       </div>
-//                     </div>
-//                     <button
-//                       type="button"
-//                       onClick={(e) => handleDeleteChat(chat.id, e)}
-//                       className="ml-1 text-[11px] text-red-500 hover:text-red-700"
-//                       title="Delete chat"
-//                     >
-//                       🗑
-//                     </button>
-//                   </button>
-//                 ))}
-//               </div>
-//             </>
-//           )}
-//         </aside>
-
-//         {/* Middle + right column */}
-//         <div className="flex-1 flex gap-4 overflow-hidden">
-//           {/* Middle: language toggle + chat UI */}
-//           <div className="flex-1 flex flex-col gap-3">
-//             {/* Top row: sidebar icon + language toggle */}
-//             <div className="w-full flex items-center justify-between pr-4">
+//           {/* =============== LEFT COLUMN (Chat List) =============== */}
+//           <aside className="flex flex-col border-r border-black/10 dark:border-white/10 p-2 bg-background-light dark:bg-background-dark overflow-hidden">
+//             <div className="p-2 flex items-center gap-2 overflow-y-auto">
 //               <button
-//                 type="button"
-//                 onClick={() => setShowSidebar((s) => !s)}
-//                 className="w-8 h-8 rounded-full bg-white shadow flex items-center justify-center text-sm"
-//                 title={showSidebar ? "Hide history" : "Show history"}
+//                 onClick={handleNewChat}
+//                 className="flex flex-1 items-center justify-center gap-2 rounded-lg h-10 bg-primary px-4 text-sm font-bold text-white hover:bg-primary/90"
 //               >
-//                 ☰
+//                 <span className="material-symbols-outlined text-xl">add</span>
+//                 <span>New chat</span>
 //               </button>
+//             </div>
 
-//               <div className="flex gap-2 text-[11px] ml-auto">
+//             <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-2 py-3">
+//               {todayChats.length > 0 && (
+//                 <div>
+//                   <h3 className="px-2 text-xs font-semibold uppercase text-text-subtle-light dark:text-text-subtle-dark">
+//                     Today
+//                   </h3>
+//                   <ul className="mt-1 flex flex-col gap-1">
+//                     {todayChats.map((chat) => (
+//                       <li key={chat.id}>
+//                         <button
+//                           onClick={() => handleSelectChat(chat.id)}
+//                           className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+//                             chat.id === activeChatId
+//                               ? "bg-primary/10 dark:bg-primary/20 text-primary dark:text-green-300 font-medium"
+//                               : "text-text-light dark:text-text-dark hover:bg-black/5 dark:hover:bg-white/5"
+//                           }`}
+//                         >
+//                           <span className="material-symbols-outlined text-base text-text-subtle-light">
+//                             chat_bubble
+//                           </span>
+//                           <span className="flex-1 truncate">{chat.title}</span>
+//                           <span
+//                             className="material-symbols-outlined text-[16px] text-red-400 opacity-0 group-hover:opacity-100"
+//                             onClick={(e) => handleDeleteChat(chat.id, e)}
+//                           >
+//                             delete
+//                           </span>
+//                         </button>
+//                       </li>
+//                     ))}
+//                   </ul>
+//                 </div>
+//               )}
+
+//               {yesterdayChats.length > 0 && (
+//                 <div>
+//                   <h3 className="px-2 text-xs font-semibold uppercase text-text-subtle-light dark:text-text-subtle-dark">
+//                     Yesterday
+//                   </h3>
+//                   <ul className="mt-1 flex flex-col gap-1">
+//                     {yesterdayChats.map((chat) => (
+//                       <li key={chat.id}>
+//                         <button
+//                           onClick={() => handleSelectChat(chat.id)}
+//                           className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+//                             chat.id === activeChatId
+//                               ? "bg-primary/10 dark:bg-primary/20 text-primary dark:text-green-300 font-medium"
+//                               : "text-text-light dark:text-text-dark hover:bg-black/5 dark:hover:bg-white/5"
+//                           }`}
+//                         >
+//                           <span className="material-symbols-outlined text-base text-text-subtle-light">
+//                             chat_bubble
+//                           </span>
+//                           <span className="flex-1 truncate">{chat.title}</span>
+//                           <span
+//                             className="material-symbols-outlined text-[16px] text-red-400 opacity-0 group-hover:opacity-100"
+//                             onClick={(e) => handleDeleteChat(chat.id, e)}
+//                           >
+//                             delete
+//                           </span>
+//                         </button>
+//                       </li>
+//                     ))}
+//                   </ul>
+//                 </div>
+//               )}
+
+//               {otherChats.length > 0 && (
+//                 <div>
+//                   <h3 className="px-2 text-xs font-semibold uppercase text-text-subtle-light dark:text-text-subtle-dark">
+//                     Older
+//                   </h3>
+//                   <ul className="mt-1 flex flex-col gap-1">
+//                     {otherChats.map((chat) => (
+//                       <li key={chat.id}>
+//                         <button
+//                           onClick={() => handleSelectChat(chat.id)}
+//                           className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+//                             chat.id === activeChatId
+//                               ? "bg-primary/10 dark:bg-primary/20 text-primary dark:text-green-300 font-medium"
+//                               : "text-text-light dark:text-text-dark hover:bg-black/5 dark:hover:bg-white/5"
+//                           }`}
+//                         >
+//                           <span className="material-symbols-outlined text-base text-text-subtle-light">
+//                             chat_bubble
+//                           </span>
+//                           <span className="flex-1 truncate">{chat.title}</span>
+//                           <span
+//                             className="material-symbols-outlined text-[16px] text-red-400 opacity-0 group-hover:opacity-100"
+//                             onClick={(e) => handleDeleteChat(chat.id, e)}
+//                           >
+//                             delete
+//                           </span>
+//                         </button>
+//                       </li>
+//                     ))}
+//                   </ul>
+//                 </div>
+//               )}
+//             </div>
+//           </aside>
+
+//           {/* =============== CENTER COLUMN (Chat Interface) =============== */}
+//           {/* ⬇️ MAIN FIX: make this a flex column with overflow on messages only,
+//               so input box stays fixed at bottom of center column */}
+//           <div className="flex flex-col bg-white/50 dark:bg-black/20 overflow-hidden">
+//             {/* Chat Header (conversation title + bot language toggle) */}
+//             <div className="flex h-14 shrink-0 items-center justify-between border-b border-black/10 dark:border-white/10 px-4">
+//               <h2 className="font-semibold truncate">
+//                 {activeChat?.title || "Panchayat Sahayika"}
+//               </h2>
+//               <div className="flex items-center gap-2 text-xs">
 //                 <button
-//                   type="button"
 //                   onClick={() => setUiLang("hi")}
-//                   className={`px-3 py-1 rounded-full border text-xs ${
+//                   className={`rounded-full h-8 px-3 font-bold border text-xs ${
 //                     uiLang === "hi"
-//                       ? "bg-[#166534] text-white border-[#166534]"
-//                       : "bg-white text-gray-700 border-gray-300"
+//                       ? "bg-primary text-white border-primary"
+//                       : "bg-black/5 dark:bg-white/5 text-text-subtle-light dark:text-text-subtle-dark border-transparent"
 //                   }`}
 //                 >
-//                   हिन्दी / Hinglish
+//                   हिन्दी
 //                 </button>
 //                 <button
-//                   type="button"
-//                   onClick={() => setUiLang("garhwali")}
-//                   className={`px-3 py-1 rounded-full border text-xs ${
-//                     uiLang === "garhwali"
-//                       ? "bg-[#166534] text-white border-[#166534]"
-//                       : "bg-white text-gray-700 border-gray-300"
-//                   }`}
-//                 >
-//                   गढ़वाली
-//                 </button>
-//                 <button
-//                   type="button"
 //                   onClick={() => setUiLang("en")}
-//                   className={`px-3 py-1 rounded-full border text-xs ${
+//                   className={`rounded-full h-8 px-3 font-bold border text-xs ${
 //                     uiLang === "en"
-//                       ? "bg-[#166534] text-white border-[#166534]"
-//                       : "bg-white text-gray-700 border-gray-300"
+//                       ? "bg-primary text-white border-primary"
+//                       : "bg-black/5 dark:bg-white/5 text-text-subtle-light dark:text-text-subtle-dark border-transparent"
 //                   }`}
 //                 >
 //                   English
 //                 </button>
+//                 <button
+//                   onClick={() => setUiLang("garhwali")}
+//                   className={`rounded-full h-8 px-3 font-bold border text-xs ${
+//                     uiLang === "garhwali"
+//                       ? "bg-primary text-white border-primary"
+//                       : "bg-black/5 dark:bg-white/5 text-text-subtle-light dark:text-text-subtle-dark border-transparent"
+//                   }`}
+//                 >
+//                   Garhwali
+//                 </button>
 //               </div>
 //             </div>
 
-//             {/* Chat area – only this scrolls */}
-//             <div className="flex-1 flex justify-center overflow-hidden">
-//               <div className="w-full max-w-3xl bg-white rounded-3xl shadow-md p-4 flex flex-col gap-3 overflow-y-auto">
-//                 {messages.map((msg, idx) => {
-//                   const msgKey = `${activeChatId}-${idx}`;
+//             {/* Message Area – only this scrolls now */}
+//             <div className="flex-1 space-y-6 overflow-y-auto p-4 md:p-6">
+//               {messages.map((msg, idx) => {
+//                 const msgKey = `${activeChatId}-${idx}`;
 
-//                   // User bubble
-//                   if (msg.from === "user") {
-//                     return (
-//                       <div
-//                         key={msgKey}
-//                         className="self-end bg-[#166534] text-white text-xs rounded-2xl px-3 py-2 max-w-[60%]"
-//                       >
-//                         {msg.text}
+//                 // USER MESSAGE
+//                 if (msg.from === "user") {
+//                   const initial = (user?.username || "U")
+//                     .charAt(0)
+//                     .toUpperCase();
+//                   return (
+//                     <div
+//                       key={msgKey}
+//                       className="flex items-end justify-end gap-3"
+//                     >
+//                       <div className="flex w-full max-w-3xl flex-col items-end gap-1">
+//                         <p className="text-xs text-text-subtle-light dark:text-text-subtle-dark">
+//                           {isHi ? "आप" : "You"}
+//                         </p>
+//                         <p className="rounded-2xl rounded-br-lg bg-primary px-4 py-2.5 text-base text-white">
+//                           {msg.text}
+//                         </p>
 //                       </div>
-//                     );
-//                   }
+//                       <div className="size-9 shrink-0 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+//                         {initial}
+//                       </div>
+//                     </div>
+//                   );
+//                 }
 
-//                   // Bot answer: plain text + optional cards + optional scheme pills
-//                   if (msg.type === "answer+cards") {
-//                     return (
-//                       <div
-//                         key={msgKey}
-//                         className="self-start max-w-[85%] flex flex-col gap-2"
-//                       >
-//                         <div className="bg-[#E6F4EA] text-[10px] text-gray-800 rounded-2xl px-3 py-1 inline-block">
-//                           🤖 Panchayat Sahayika
+//                 // BOT: ANSWER + CARDS
+//                 if (msg.type === "answer+cards") {
+//                   return (
+//                     <div key={msgKey} className="flex items-end gap-3">
+//                       {/* Bot avatar */}
+//                       <div className="size-9 shrink-0 rounded-full bg-primary/20 flex items-center justify-center">
+//                         <div className="size-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
+//                           S
 //                         </div>
+//                       </div>
 
-//                         <AnswerCard>
-//                           {/* Header row: speaker + copy */}
-//                           <div className="flex items-center justify-between mb-1">
-//                             <span className="text-[10px] text-gray-500">
-//                               Panchayat Sahayika ka jawab
-//                             </span>
-//                             <div className="flex items-center gap-1">
+//                       <div className="flex w-full max-w-3xl flex-col items-start gap-1">
+//                         <p className="text-xs text-text-subtle-light dark:text-text-subtle-dark">
+//                           Sahayika Bot
+//                         </p>
+
+//                         {/* Little text bubble if any intro text */}
+//                         {msg.text && (
+//                           <p className="rounded-2xl rounded-bl-lg bg-bot-bubble-light dark:bg-bot-bubble-dark px-4 py-2.5 text-base text-text-light dark:text-text-dark whitespace-pre-line">
+//                             <span
+//                               dangerouslySetInnerHTML={{ __html: msg.text }}
+//                             />
+//                           </p>
+//                         )}
+
+//                         {/* Main AnswerCard like in reference */}
+//                         <div className="mt-2 w-full max-w-xl">
+//                           <AnswerCard>
+//                             <div className="flex items-center justify-end gap-1 border-b border-black/10 dark:border-white/10 px-3 py-1.5">
 //                               <button
-//                                 type="button"
 //                                 onClick={() => handleSpeak(msgKey, msg)}
-//                                 className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]"
-//                                 title={
-//                                   speakingKey === msgKey
-//                                     ? "Bolna band karein"
-//                                     : "Jawab सुनें"
-//                                 }
+//                                 className="flex size-7 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-text-subtle-light dark:text-text-subtle-dark"
 //                               >
-//                                 {speakingKey === msgKey ? "⏹" : "🔈"}
+//                                 {speakingKey === msgKey ? (
+//                                   <span className="material-symbols-outlined text-base">
+//                                     stop
+//                                   </span>
+//                                 ) : (
+//                                   <span className="material-symbols-outlined text-base">
+//                                     volume_up
+//                                   </span>
+//                                 )}
 //                               </button>
 //                               <button
-//                                 type="button"
 //                                 onClick={() => handleCopy(msgKey, msg)}
-//                                 className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]"
-//                                 title="Copy karein"
+//                                 className="flex size-7 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-text-subtle-light dark:text-text-subtle-dark"
 //                               >
-//                                 📋
+//                                 <span className="material-symbols-outlined text-base">
+//                                   content_copy
+//                                 </span>
 //                               </button>
 //                               {copiedKey === msgKey && (
 //                                 <span className="text-[10px] text-gray-500">
-//                                   Copied
+//                                   {isHi ? "कॉपी हुआ" : "Copied"}
 //                                 </span>
 //                               )}
 //                             </div>
-//                           </div>
 
-//                           {/* actual answer HTML */}
-//                           <div
-//                             className="text-xs leading-relaxed whitespace-pre-line"
-//                             dangerouslySetInnerHTML={{ __html: msg.text }}
-//                           />
-
-//                           {/* scheme pills from sources (only those present in JSON) */}
-//                           {msg.sources?.length > 0 && (
-//                             <div className="mt-2 flex flex-wrap gap-1">
-//                               {msg.sources.map((s, i) => {
-//                                 const label = s.name_hi || s.name_en;
-//                                 const hasData = getSchemeByLabel(label);
-//                                 if (!hasData) return null;
-//                                 return (
-//                                   <button
-//                                     key={i}
-//                                     type="button"
-//                                     onClick={() => openSchemeByName(label)}
-//                                     className="px-3 py-1 bg-[#ECFDF5] text-[10px] text-[#166534] rounded-full border border-[#BBF7D0] cursor-pointer hover:bg-[#D1F1DE]"
-//                                   >
-//                                     {label}
-//                                   </button>
-//                                 );
-//                               })}
-//                             </div>
-//                           )}
-
-//                           {/* minimal scheme cards from msg.cards (no Apply/Read, only those present in JSON) */}
-//                           {msg.cards?.length > 0 && (
-//                             <div className="mt-3 space-y-2">
-//                               {msg.cards.map((c, i) => {
+//                             {/* Cards from backend (scheme tiles) */}
+//                             <div className="p-4 space-y-2">
+//                               {msg.cards?.map((c, i) => {
 //                                 const label = c.title_hi || c.title;
 //                                 const hasData = getSchemeByLabel(label);
 //                                 if (!hasData) return null;
+
 //                                 return (
 //                                   <button
 //                                     key={i}
-//                                     type="button"
-//                                     onClick={() => openSchemeByName(label)}
-//                                     className="w-full text-left border border-[#E5E7EB] rounded-2xl bg-[#F9FAFB] px-3 py-2 hover:bg:white hover:shadow-sm transition cursor-pointer"
+//                                     onClick={() => setSelectedScheme(hasData)}
+//                                     className="w-full text-left rounded-2xl bg-card-light dark:bg-card-dark border border-black/10 dark:border-white/10 px-3 py-2 hover:bg-black/5 dark:hover:bg-white/5 transition cursor-pointer"
 //                                   >
-//                                     <div className="text-xs font-semibold text-gray-900">
+//                                     <div className="text-sm font-semibold text-text-light dark:text-text-dark">
 //                                       {c.title}
 //                                     </div>
 //                                     {c.subtitle && (
-//                                       <div className="text-[11px] text-gray-600 mt-0.5">
+//                                       <div className="text-[11px] text-text-subtle-light dark:text-text-subtle-dark mt-0.5">
 //                                         {c.subtitle}
 //                                       </div>
 //                                     )}
@@ -2775,73 +854,95 @@
 //                                 );
 //                               })}
 //                             </div>
-//                           )}
-//                         </AnswerCard>
-//                       </div>
-//                     );
-//                   }
-
-//                   // Bot answer: text + sources (old shape)
-//                   if (msg.type === "answer") {
-//                     return (
-//                       <div
-//                         key={msgKey}
-//                         className="self-start max-w-[80%] flex flex-col gap-2"
-//                       >
-//                         <div className="bg-[#E6F4EA] text-[10px] text-gray-800 rounded-2xl px-3 py-1 inline-block">
-//                           🤖 Panchayat Sahayika
+//                           </AnswerCard>
 //                         </div>
+
+//                         {/* Source pills */}
+//                         {msg.sources?.length > 0 && (
+//                           <div className="mt-2 flex flex-wrap gap-2">
+//                             {msg.sources.map((s, i) => {
+//                               const label = s.name_hi || s.name_en;
+//                               const hasData = findScheme(label);
+//                               if (!hasData) return null;
+//                               return (
+//                                 <button
+//                                   key={i}
+//                                   onClick={() => setSelectedScheme(hasData)}
+//                                   className="px-3 py-1 bg-green-50 border border-green-200 text-green-700 text-[10px] rounded-full hover:bg-green-100"
+//                                 >
+//                                   {label}
+//                                 </button>
+//                               );
+//                             })}
+//                           </div>
+//                         )}
+//                       </div>
+//                     </div>
+//                   );
+//                 }
+
+//                 // BOT: NORMAL ANSWER / TEXT
+//                 if (msg.type === "answer" || msg.type === "text") {
+//                   return (
+//                     <div key={msgKey} className="flex items-end gap-3">
+//                       <div className="size-9 shrink-0 rounded-full bg-primary/20 flex items-center justify-center">
+//                         <div className="size-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
+//                           S
+//                         </div>
+//                       </div>
+
+//                       <div className="flex max-w-xl flex-col items-start gap-1">
+//                         <p className="text-xs text-text-subtle-light dark:text-text-subtle-dark">
+//                           Sahayika Bot
+//                         </p>
+
 //                         <AnswerCard>
-//                           <div className="flex items-center justify-between mb-1">
-//                             <span className="text-[10px] text-gray-500">
-//                               Panchayat Sahayika ka jawab
-//                             </span>
-//                             <div className="flex items-center gap-1">
-//                               <button
-//                                 type="button"
-//                                 onClick={() => handleSpeak(msgKey, msg)}
-//                                 className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]"
-//                                 title={
-//                                   speakingKey === msgKey
-//                                     ? "Bolna band karein"
-//                                     : "Jawab सुनें"
-//                                 }
-//                               >
-//                                 {speakingKey === msgKey ? "⏹" : "🔈"}
-//                               </button>
-//                               <button
-//                                 type="button"
-//                                 onClick={() => handleCopy(msgKey, msg)}
-//                                 className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]"
-//                                 title="Copy karein"
-//                               >
-//                                 📋
-//                               </button>
-//                               {copiedKey === msgKey && (
-//                                 <span className="text-[10px] text-gray-500">
-//                                   Copied
+//                           <div className="flex items-center justify-end gap-1 border-b border-black/10 dark:border-white/10 px-3 py-1.5">
+//                             <button
+//                               onClick={() => handleSpeak(msgKey, msg)}
+//                               className="flex size-7 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-text-subtle-light dark:text-text-subtle-dark"
+//                             >
+//                               {speakingKey === msgKey ? (
+//                                 <span className="material-symbols-outlined text-base">
+//                                   stop
+//                                 </span>
+//                               ) : (
+//                                 <span className="material-symbols-outlined text-base">
+//                                   volume_up
 //                                 </span>
 //                               )}
-//                             </div>
+//                             </button>
+//                             <button
+//                               onClick={() => handleCopy(msgKey, msg)}
+//                               className="flex size-7 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-text-subtle-light dark:text-text-subtle-dark"
+//                             >
+//                               <span className="material-symbols-outlined text-base">
+//                                 content_copy
+//                               </span>
+//                             </button>
+//                             {copiedKey === msgKey && (
+//                               <span className="text-[10px] text-gray-500">
+//                                 {isHi ? "कॉपी हुआ" : "Copied"}
+//                               </span>
+//                             )}
 //                           </div>
 
 //                           <div
-//                             className="text-xs leading-relaxed whitespace-pre-line"
+//                             className="p-4 text-sm leading-relaxed whitespace-pre-line text-text-light dark:text-text-dark"
 //                             dangerouslySetInnerHTML={{ __html: msg.text }}
 //                           />
 
 //                           {msg.sources?.length > 0 && (
-//                             <div className="mt-2 flex flex-wrap gap-1">
+//                             <div className="border-t border-black/10 dark:border-white/10 px-4 py-3 flex flex-wrap gap-2">
 //                               {msg.sources.map((s, i) => {
 //                                 const label = s.name_hi || s.name_en;
-//                                 const hasData = getSchemeByLabel(label);
+//                                 const hasData = findScheme(label);
 //                                 if (!hasData) return null;
 //                                 return (
 //                                   <button
 //                                     key={i}
-//                                     type="button"
-//                                     onClick={() => openSchemeByName(label)}
-//                                     className="px-3 py-1 bg-[#ECFDF5] text-[10px] text-[#166534] rounded-full border border-[#BBF7D0] cursor-pointer hover:bg-[#D1F1DE]"
+//                                     onClick={() => setSelectedScheme(hasData)}
+//                                     className="px-3 py-1 bg-green-50 border border-green-200 text-green-700 text-[10px] rounded-full hover:bg-green-100"
 //                                   >
 //                                     {label}
 //                                   </button>
@@ -2851,169 +952,133 @@
 //                           )}
 //                         </AnswerCard>
 //                       </div>
-//                     );
-//                   }
-
-//                   // Simple bot bubble (initial greeting)
-//                   return (
-//                     <div
-//                       key={msgKey}
-//                       className="self-start bg-[#E6F4EA] text-xs text-gray-800 rounded-2xl px-3 py-2 max-w-[70%]"
-//                     >
-//                       <div className="font-semibold mb-1">
-//                         🤖 Panchayat Sahayika
-//                       </div>
-//                       <div>{msg.text}</div>
 //                     </div>
 //                   );
-//                 })}
+//                 }
 
-//                 {loading && (
-//                   <div className="self-start bg-[#E6F4EA] text-[10px] text-gray-600 rounded-2xl px-3 py-1 max-w-[40%]">
-//                     सोच रही हूँ...
+//                 // Fallback
+//                 return (
+//                   <div key={msgKey} className="flex items-end gap-3">
+//                     <div className="size-9 shrink-0 rounded-full bg-primary/20 flex items-center justify-center">
+//                       <div className="size-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
+//                         S
+//                       </div>
+//                     </div>
+//                     <div className="flex max-w-xl flex-col items-start gap-1">
+//                       <p className="text-xs text-text-subtle-light dark:text-text-subtle-dark">
+//                         Sahayika Bot
+//                       </p>
+//                       <p className="rounded-2xl rounded-bl-lg bg-bot-bubble-light dark:bg-bot-bubble-dark px-4 py-2.5 text-base text-text-light dark:text-text-dark">
+//                         {msg.text}
+//                       </p>
+//                     </div>
 //                   </div>
-//                 )}
-//               </div>
+//                 );
+//               })}
+
+//               {loading && (
+//                 <div className="flex items-center gap-2 text-xs text-gray-600">
+//                   <div className="size-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+//                   <span>{isHi ? "सोच रही हूँ..." : "Thinking…"}</span>
+//                 </div>
+//               )}
 //             </div>
 
-//             {/* Input bar – stays at bottom of this column */}
-//             <div className="w-full max-w-3xl bg-white border-t border-gray-200 px-3 py-3 rounded-t-3xl flex items-center gap-3">
-//               {/* 🎤 Mic button with listening state */}
-//               <button
-//                 className="w-10 h-10 rounded-full bg-[#166534] text-white flex items-center justify-center text-sm"
-//                 type="button"
-//                 onClick={startListening}
-//                 title="Voice input"
-//               >
-//                 {listening ? "🔴" : "🎙️"}
-//               </button>
+//             {/* ⬇️ FIXED Chat Input Footer (center column bottom) */}
+//             <div className="shrink-0 border-t border-black/10 dark:border-white/10 px-4 py-3 bg-background-light dark:bg-background-dark">
+//               <div className="relative flex items-center">
+//                 <button
+//                   onClick={startListening}
+//                   className="absolute left-2 flex size-8 items-center justify-center rounded-full hover:bg-black/10 dark:hover:bg-white/10"
+//                 >
+//                   {listening ? (
+//                     <span className="material-symbols-outlined text-text-subtle-light dark:text-text-subtle-dark">
+//                       stop
+//                     </span>
+//                   ) : (
+//                     <span className="material-symbols-outlined text-text-subtle-light dark:text-text-subtle-dark">
+//                       mic
+//                     </span>
+//                   )}
+//                 </button>
 
-//               <input
-//                 className="flex-1 px-4 py-2 rounded-full border border-gray-300 text-xs outline-none"
-//                 placeholder="Type your question... / अपना सवाल यहाँ लिखें..."
-//                 value={input}
-//                 onChange={(e) => setInput(e.target.value)}
-//                 onKeyDown={handleKeyDown}
-//               />
+//                 <textarea
+//                   rows={1}
+//                   className="w-full resize-none rounded-xl border-0 bg-black/5 dark:bg-white/5 py-2.5 pl-12 pr-12 text-base focus:ring-2 focus:ring-primary"
+//                   placeholder={
+//                     isHi
+//                       ? "अपना प्रश्न पूछें... / Ask your question..."
+//                       : "Ask your question... / अपना प्रश्न पूछें..."
+//                   }
+//                   value={input}
+//                   onChange={(e) => setInput(e.target.value)}
+//                   onKeyDown={(e) => {
+//                     if (e.key === "Enter" && !e.shiftKey) {
+//                       e.preventDefault();
+//                       sendMessage();
+//                     }
+//                   }}
+//                 />
 
-//               <button
-//                 className="w-10 h-10 rounded-full bg-[#166534] text-white flex items-center justify-center text-sm disabled:opacity-60"
-//                 type="button"
-//                 onClick={sendMessage}
-//                 disabled={loading || !input.trim()}
-//                 title="Send"
-//               >
-//                 ➤
-//               </button>
+//                 <button
+//                   onClick={sendMessage}
+//                   disabled={loading || !input.trim()}
+//                   className="absolute right-2 flex size-8 items-center justify-center rounded-full bg-primary text-white hover:bg-primary/90 disabled:opacity-50"
+//                 >
+//                   <span className="material-symbols-outlined">send</span>
+//                 </button>
+//               </div>
+//               {listening && (
+//                 <div className="mt-1 text-[11px] text-green-700">
+//                   🎙️ {isHi ? "मैं आपकी बात सुन रही हूँ..." : "I'm listening..."}
+//                 </div>
+//               )}
 //             </div>
-
-//             {/* optional “listening…” text below bar */}
-//             {listening && (
-//               <div className="text-[11px] text-green-700 pl-14 pb-2">
-//                 🎙️ मैं आपकी बात सुन रही हूँ... साफ़-साफ़ बोलिए।
-//               </div>
-//             )}
 //           </div>
 
-//           {/* Right side: 3 cards (Schemes + Trainings + Planning Tool) */}
-//           <div className="w-80 flex flex-col gap-4 pr-4 pt-10">
-//             {/* Card 1: Find Schemes & Services */}
-//             <button
-//               type="button"
-//               onClick={() => navigate("/finder")}
-//               className="bg-white rounded-3xl shadow-md border border-[#F4E3C3] px-4 py-4 text-left hover:shadow-lg transition cursor-pointer"
-//             >
-//               <div className="text-xs font-semibold text-[#166534] mb-1">
-//                 योजनाएँ / सेवाएँ / प्रोग्राम
-//               </div>
-//               <div className="text-sm font-semibold mb-1">
-//                 Find Schemes &amp; Services
-//               </div>
-//               <p className="text-[11px] text-gray-600 leading-relaxed">
-//                 अपने गाँव, जाति, सेवा या अन्य विवरण के आधार पर आपके लिए उपलब्ध
-//                 सरकारी योजनाएँ देखें।
-//               </p>
-//             </button>
+//           {/* =============== RIGHT COLUMN (Global RightSidebar) =============== */}
+//           {/* ⬇️ OLD related-schemes sidebar removed.
+//               Now using the shared RightSidebar from your layout. */}
+//           <aside className="flex flex-col border-l border-black/10 dark:border-white/10 pl-5 pr-4 py-4 overflow-y-auto bg-background-light dark:bg-background-dark">
+//             <RightSidebar />
+//           </aside>
+//         </main>
+//       </div>
 
-//             {/* Card 2: Panchayat Trainings Finder */}
-//             <button
-//               type="button"
-//               onClick={() => navigate("/my-panchayat/trainings")}
-//               className="bg-white rounded-3xl shadow-md border border-[#F4E3C3] px-4 py-4 text-left hover:shadow-lg transition cursor-pointer"
-//             >
-//               <div className="text-xs font-semibold text-[#166534] mb-1">
-//                 प्रशिक्षण / क्षमता विकास
-//               </div>
-//               <div className="text-sm font-semibold mb-1">
-//                 Panchayat Trainings Finder
-//               </div>
-//               <p className="text-[11px] text-gray-600 leading-relaxed">
-//                 District और Block के हिसाब से सभी पंचायत trainings एक ही जगह पर
-//                 देखें।
-//               </p>
-//             </button>
-
-//             {/* Card 3: Smart Gram Planning Tool */}
-//             <button
-//               type="button"
-//               onClick={() => navigate("/my-panchayat/planning")}
-//               className="bg-white rounded-3xl shadow-md border border-[#F4E3C3] px-4 py-4 text-left hover:shadow-lg transition cursor-pointer"
-//             >
-//               <div className="text-xs font-semibold text-[#166534] mb-1">
-//                 Smart Gram Planning
-//               </div>
-//               <div className="text-sm font-semibold mb-1">
-//                 Smart Gram Planning Tool
-//               </div>
-//               <p className="text-[11px] text-gray-600 leading-relaxed">
-//                 Village infra deficit index के आधार पर development priorities और
-//                 सुझाए गए projects देखें।
-//               </p>
-//             </button>
-//           </div>
-//         </div>
-//       </section>
-
-//       {/* Scheme popup */}
-//       <SchemeDetailsModal
-//         scheme={selectedScheme}
-//         onClose={() => setSelectedScheme(null)}
-//       />
+//       {/* Scheme Modal */}
+//       {selectedScheme && (
+//         <SchemeDetailsModal
+//           scheme={selectedScheme}
+//           onClose={() => setSelectedScheme(null)}
+//         />
+//       )}
 //     </>
 //   );
 // }
 
 
 
-
-
-
-
 // src/screens/ChatScreen.jsx
-// src/screens/ChatScreen.jsx
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import AnswerCard from "../components/ui/AnswerCard.jsx";
 import { useAuth } from "../auth/useAuth.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import SCHEMES from "../data/samaj_kalyan_vibhag_clean_typed.json";
 
-// Configure API base once; override via .env: VITE_API_BASE=http://127.0.0.1:8000
+// Right sidebar used in layout
+import RightSidebar from "../components/layout/RightSidebar.jsx";
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 const API_URL = `${API_BASE}/ask`;
-
-// Base key for localStorage
 const STORAGE_KEY_BASE = "ps_chats_v1";
 
-// Initial welcome message for every new chat
 const WELCOME_MESSAGE = {
   from: "bot",
   type: "text",
-  text:
-    "नमस्ते! मैं आपकी पंचायत सहायिका हूं। Aap apna sawal bolkar ya likhkar pooch sakte hain – हिन्दी, गढ़वाली ya English mein.",
+  text: "नमस्ते! मैं आपकी पंचायत सहायिका हूं। Aap apna sawal bolkar ya likhkar pooch sakte hain – हिन्दी, गढ़वाली ya English mein.",
 };
 
-// Helper to make a new empty chat
 function createNewChat() {
   return {
     id: `chat_${Date.now()}`,
@@ -3023,96 +1088,62 @@ function createNewChat() {
   };
 }
 
-// ------- Scheme details modal (same idea as finder screen) -------
+/* --------------------- Scheme Details Modal --------------------- */
 function SchemeDetailsModal({ scheme, onClose }) {
   if (!scheme) return null;
 
-  const fields = [
-    ["TYPE", "type"],
-    ["CATEGORY", "category"],
-    ["DEPARTMENT", "department"],
-    ["ELIGIBILITY", "eligibility"],
-    ["BENEFIT", "benefit"],
-    ["APPLY PROCESS", "apply_process"],
-    ["SOURCE", "source"],
-    ["LANGUAGE", "language"],
-  ];
-
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
-      <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6 md:p-8">
+    <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center px-4">
+      <div className="relative bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl">
         <button
-          type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 text-xl text-gray-400 hover:text-gray-600"
-          aria-label="Close"
+          className="absolute right-4 top-4 text-2xl text-gray-400 hover:text-gray-600"
         >
           ✕
         </button>
 
-        {/* Title */}
-        <h2 className="text-2xl font-semibold mb-1">
-          {scheme.name_hi || scheme.name_en || "Scheme details"}
+        <h2 className="text-xl font-bold mb-1">
+          {scheme.name_hi || scheme.name_en}
         </h2>
         {scheme.name_en && (
-          <p className="text-sm text-gray-600 mb-3">{scheme.name_en}</p>
+          <p className="text-sm text-gray-600 mb-2">{scheme.name_en}</p>
         )}
 
-        {/* Meta line */}
         <p className="text-xs text-gray-500 mb-4">
-          Scheme / Yojana {scheme.category ? `• ${scheme.category}` : ""}{" "}
-          {scheme.department ? `• ${scheme.department}` : ""}
+          {scheme.category ? scheme.category + " • " : ""}
+          {scheme.department || ""}
         </p>
 
-        {/* Descriptions */}
         {scheme.description_hi && (
           <div className="mb-3">
-            <h3 className="text-sm font-semibold mb-1">विवरण (Hindi)</h3>
-            <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">
+            <h3 className="font-semibold text-sm mb-1">विवरण (Hindi)</h3>
+            <p className="text-sm whitespace-pre-line">
               {scheme.description_hi}
             </p>
           </div>
         )}
-
         {scheme.description_en && (
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold mb-1">Description (English)</h3>
-            <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">
+          <div>
+            <h3 className="font-semibold text-sm mb-1">
+              Description (English)
+            </h3>
+            <p className="text-sm whitespace-pre-line">
               {scheme.description_en}
             </p>
           </div>
         )}
-
-        {/* Grid of extra fields */}
-        <div className="mt-2 grid gap-4 md:grid-cols-2 text-sm">
-          {fields.map(([label, key]) => {
-            const value = scheme[key];
-            if (!value) return null;
-            return (
-              <div key={key}>
-                <div className="text-[11px] font-semibold tracking-wide text-gray-500 mb-1">
-                  {label}
-                </div>
-                <div className="whitespace-pre-line text-gray-800">
-                  {value}
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </div>
     </div>
   );
 }
 
-// ======================== CHAT SCREEN ========================
+/* ========================= MAIN SCREEN ========================= */
 export default function ChatScreen() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { lang } = useLanguage(); // global site language (hi/en)
+  const { lang } = useLanguage();
   const isHi = lang === "hi";
 
-  // 🔑 storage key is per-user now
   const storageKey = user?.username
     ? `${STORAGE_KEY_BASE}_${user.username}`
     : `${STORAGE_KEY_BASE}_guest`;
@@ -3123,29 +1154,24 @@ export default function ChatScreen() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-
+  // Chatbot answer language
   const [uiLang, setUiLang] = useState("hi");
 
-  // 🎤 Mic listening status
+  // Voice features
   const [listening, setListening] = useState(false);
-
-  // 🔈 / 📋 per-message state
   const [speakingKey, setSpeakingKey] = useState(null);
   const [copiedKey, setCopiedKey] = useState(null);
-
-  // Audio ref for server-generated TTS files
   const audioRef = useRef(null);
-
-  // 👁️ show/hide sidebar
-  const [showSidebar, setShowSidebar] = useState(true);
-
-  // 💡 currently opened scheme (for popup)
-  const [selectedScheme, setSelectedScheme] = useState(null);
-
-  // 🔊 cached voices for browser TTS
   const [voices, setVoices] = useState([]);
 
-  // ---------- load browser voices once ----------
+  // UI state
+  const [selectedScheme, setSelectedScheme] = useState(null);
+
+  const activeChat =
+    chats.find((c) => c.id === activeChatId) || chats[0] || null;
+  const messages = activeChat?.messages || [];
+
+  /* --------------------- Load browser voices --------------------- */
   useEffect(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
 
@@ -3153,86 +1179,17 @@ export default function ChatScreen() {
 
     function loadVoices() {
       const vs = synth.getVoices();
-      if (vs && vs.length) {
-        setVoices(vs);
-      }
+      if (vs && vs.length) setVoices(vs);
     }
 
     loadVoices();
     synth.onvoiceschanged = loadVoices;
-
     return () => {
       synth.onvoiceschanged = null;
     };
   }, []);
 
-  // ---------- helpers for scheme popup & filtering ----------
-  function getSchemeByLabel(label) {
-    if (!label) return null;
-
-    const norm = label.replace(/[()]/g, "").trim().toLowerCase();
-
-    const match =
-      SCHEMES.find((s) => {
-        const hi = String(s.name_hi || "").toLowerCase();
-        const en = String(s.name_en || "").toLowerCase();
-        return (
-          hi === norm ||
-          en === norm ||
-          hi.includes(norm) ||
-          en.includes(norm)
-        );
-      }) || null;
-
-    return match;
-  }
-
-  function openSchemeByName(label) {
-    const match = getSchemeByLabel(label);
-    if (match) {
-      setSelectedScheme(match);
-    } else {
-      console.warn("Scheme not found for pill:", label);
-    }
-  }
-
-  // ---------- Load chats from localStorage on first mount ----------
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const loadedChats = Array.isArray(parsed.chats) ? parsed.chats : [];
-        if (loadedChats.length > 0) {
-          setChats(loadedChats);
-          setActiveChatId(parsed.activeChatId || loadedChats[0].id);
-          return;
-        }
-      }
-    } catch (err) {
-      console.error("Failed to load chats from storage:", err);
-    }
-
-    const firstChat = createNewChat();
-    setChats([firstChat]);
-    setActiveChatId(firstChat.id);
-  }, [storageKey]);
-
-  // ---------- Persist chats to localStorage whenever they change ----------
-  useEffect(() => {
-    if (!chats.length) return;
-    try {
-      localStorage.setItem(storageKey, JSON.stringify({ chats, activeChatId }));
-    } catch (err) {
-      console.error("Failed to save chats:", err);
-    }
-  }, [chats, activeChatId, storageKey]);
-
-  const activeChat =
-    chats.find((c) => c.id === activeChatId) || chats[0] || null;
-  const messages = activeChat?.messages || [];
-
-  // ---------- Helper functions ----------
+  /* --------------------- Helpers --------------------- */
   function stripHtml(html) {
     const tmp = document.createElement("div");
     tmp.innerHTML = html;
@@ -3244,51 +1201,71 @@ export default function ChatScreen() {
     return html.replace(/Apply\s*\/\s*Read More[^<]*/gi, "");
   }
 
+  function getSchemeByLabel(label) {
+    if (!label) return null;
+    const norm = label.replace(/[()]/g, "").trim().toLowerCase();
 
-  // 🅰️ Text aloud padhne ke liye
-  function handleSpeak(msgKey, msg) {
-    try {
-      // If we have a server-generated audio URL (Garhwali), use that instead of browser TTS
-      if (msg.audio_url) {
-        // Toggle: if same message is already playing, stop it
-        if (speakingKey === msgKey && audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-          audioRef.current = null;
-          setSpeakingKey(null);
-          return;
-        }
-
-        // Otherwise create a new audio object
-        const audio = new Audio(msg.audio_url);
-        audioRef.current = audio;
-        setSpeakingKey(msgKey);
-
-        audio.play();
-        audio.onended = () => {
-          setSpeakingKey(null);
-          audioRef.current = null;
-        };
-        return;
-      }
-
-      // Default fallback: browser-based TTS
-      const text = msg.content || "";
-      if (!text.trim()) return;
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
-    } catch (err) {
-      console.error("TTS error:", err);
-    }
+    return (
+      SCHEMES.find((s) => {
+        const hi = String(s.name_hi || "").toLowerCase();
+        const en = String(s.name_en || "").toLowerCase();
+        return (
+          hi === norm || en === norm || hi.includes(norm) || en.includes(norm)
+        );
+      }) || null
+    );
   }
 
+  // For source pills (more lenient)
+  function findScheme(label) {
+    if (!label) return null;
+    const l = label.toLowerCase();
+    return (
+      SCHEMES.find(
+        (s) =>
+          (s.name_hi || "").toLowerCase().includes(l) ||
+          (s.name_en || "").toLowerCase().includes(l)
+      ) || null
+    );
+  }
+
+  /* --------------------- Load chats on mount --------------------- */
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const loaded = Array.isArray(parsed.chats) ? parsed.chats : [];
+        if (loaded.length > 0) {
+          setChats(loaded);
+          setActiveChatId(parsed.activeChatId || loaded[0].id);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load chats:", err);
+    }
+
+    const first = createNewChat();
+    setChats([first]);
+    setActiveChatId(first.id);
+  }, [storageKey]);
+
+  /* --------------------- Persist chats --------------------- */
+  useEffect(() => {
+    if (!chats.length) return;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({ chats, activeChatId }));
+    } catch (err) {
+      console.error("Failed to save chats:", err);
+    }
+  }, [chats, activeChatId, storageKey]);
+
+  /* --------------------- Voice: Speak answer --------------------- */
   function handleSpeak(msgKey, msg) {
     try {
-      // If we have a server-generated audio_url (Garhwali), use that instead of browser TTS
+      // 1) If server audio_url present (Garhwali TTS)
       if (msg.audio_url) {
-        // Toggle: if same message is already playing, stop it
         if (speakingKey === msgKey && audioRef.current) {
           audioRef.current.pause();
           audioRef.current.currentTime = 0;
@@ -3297,13 +1274,16 @@ export default function ChatScreen() {
           return;
         }
 
-        // Stop any previous audio
         if (audioRef.current) {
           audioRef.current.pause();
           audioRef.current.currentTime = 0;
         }
 
-        const audio = new Audio(`${API_BASE}${msg.audio_url}`);
+        const audio = new Audio(
+          msg.audio_url.startsWith("http")
+            ? msg.audio_url
+            : `${API_BASE}${msg.audio_url}`
+        );
         audioRef.current = audio;
         setSpeakingKey(msgKey);
 
@@ -3313,16 +1293,19 @@ export default function ChatScreen() {
         };
 
         audio.play().catch((err) => {
-          console.error("Failed to play Garhwali TTS:", err);
+          console.error("Failed to play TTS audio:", err);
           setSpeakingKey(null);
         });
-
         return;
       }
 
-      // Fallback: browser TTS (for Hindi/English text answers)
+      // 2) Browser TTS fallback
       if (typeof window === "undefined" || !window.speechSynthesis) {
-        alert(isHi ? "आपका ब्राउज़र वॉइस सपोर्ट नहीं करता।" : "Your browser doesn't support TTS.");
+        alert(
+          isHi
+            ? "आपका ब्राउज़र वॉइस सपोर्ट नहीं करता।"
+            : "Your browser doesn't support TTS."
+        );
         return;
       }
 
@@ -3342,32 +1325,20 @@ export default function ChatScreen() {
       let selectedVoice = null;
 
       if (msg.lang === "en" && !hasDevanagari) {
-        // English response
         utterance.lang = "en-IN";
         selectedVoice =
-          voices.find((v) =>
-            v.lang?.toLowerCase().startsWith("en-in")
-          ) ||
-          voices.find((v) =>
-            v.lang?.toLowerCase().startsWith("en")
-          ) ||
+          voices.find((v) => v.lang?.toLowerCase().startsWith("en-in")) ||
+          voices.find((v) => v.lang?.toLowerCase().startsWith("en")) ||
           null;
       } else {
-        // Hindi / Garhwali / Hinglish → Hindi voice
         utterance.lang = "hi-IN";
         selectedVoice =
-          voices.find((v) =>
-            v.lang?.toLowerCase().startsWith("hi")
-          ) ||
-          voices.find((v) =>
-            v.lang?.toLowerCase().includes("hi-in")
-          ) ||
+          voices.find((v) => v.lang?.toLowerCase().startsWith("hi")) ||
+          voices.find((v) => v.lang?.toLowerCase().includes("hi-in")) ||
           null;
       }
 
-      if (selectedVoice) {
-        utterance.voice = selectedVoice;
-      }
+      if (selectedVoice) utterance.voice = selectedVoice;
 
       synth.cancel();
       synth.speak(utterance);
@@ -3379,6 +1350,7 @@ export default function ChatScreen() {
     }
   }
 
+  /* --------------------- Copy answer text --------------------- */
   async function handleCopy(msgKey, msg) {
     try {
       const plainText = stripHtml(msg.text || "");
@@ -3396,35 +1368,32 @@ export default function ChatScreen() {
       }
 
       setCopiedKey(msgKey);
-      setTimeout(() => setCopiedKey((curr) => (curr === msgKey ? null : curr)), 1500);
+      setTimeout(() => {
+        setCopiedKey((curr) => (curr === msgKey ? null : curr));
+      }, 1500);
     } catch (err) {
       console.error("Copy failed:", err);
       alert(isHi ? "कॉपी विफल हुआ।" : "Copy failed.");
     }
   }
 
+  /* --------------------- Mic / Speech input --------------------- */
   function startListening() {
     try {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
 
       if (!SpeechRecognition) {
-        alert(isHi ? "आपका ब्राउज़र वॉइस इनपुट सपोर्ट नहीं करता।" : "Your browser does not support voice input.");
+        alert(
+          isHi
+            ? "आपका ब्राउज़र वॉइस इनपुट सपोर्ट नहीं करता।"
+            : "Your browser does not support voice input."
+        );
         return;
       }
 
       const recognition = new SpeechRecognition();
-<<<<<<< HEAD
-
-      // English ke liye EN, baaki sab (Hindi/Hinglish/Garhwali) ke liye HI
-      if (uiLang === "en") {
-        recognition.lang = "en-IN";
-      } else {
-        recognition.lang = "hi-IN";
-      }
-
-=======
       recognition.lang = "hi-IN";
->>>>>>> 2022a3691b16446a688402e42e8bdbddc86a2fee
       recognition.interimResults = false;
 
       recognition.onstart = () => setListening(true);
@@ -3433,13 +1402,17 @@ export default function ChatScreen() {
       recognition.onresult = (event) => {
         const speechText = event.results?.[0]?.[0]?.transcript ?? "";
         if (!speechText) return;
-        setInput((prev) => (prev ? `${prev.trimEnd()} ${speechText}` : speechText));
+        setInput((prev) =>
+          prev ? `${prev.trimEnd()} ${speechText}` : speechText
+        );
       };
 
       recognition.onerror = (err) => {
         console.error("Speech recognition error:", err);
         setListening(false);
-        alert((isHi ? "माइक त्रुटि: " : "Mic error: ") + (err?.error ?? "unknown"));
+        alert(
+          (isHi ? "माइक त्रुटि: " : "Mic error: ") + (err?.error ?? "unknown")
+        );
       };
 
       recognition.start();
@@ -3449,25 +1422,17 @@ export default function ChatScreen() {
     }
   }
 
+  /* --------------------- Chat management --------------------- */
   function handleNewChat() {
-    const newChat = createNewChat();
-    setChats((prev) => [...prev, newChat]);
-    setActiveChatId(newChat.id);
+    const nc = createNewChat();
+    setChats((prev) => [...prev, nc]);
+    setActiveChatId(nc.id);
     setInput("");
     setSpeakingKey(null);
     setCopiedKey(null);
-<<<<<<< HEAD
     if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current = null;
-    }
-=======
-    if (typeof window !== "undefined" && window.speechSynthesis) window.speechSynthesis.cancel();
->>>>>>> 2022a3691b16446a688402e42e8bdbddc86a2fee
   }
 
   function handleDeleteChat(chatId, e) {
@@ -3484,6 +1449,16 @@ export default function ChatScreen() {
     });
   }
 
+  function handleSelectChat(chatId) {
+    setActiveChatId(chatId);
+    setSpeakingKey(null);
+    setCopiedKey(null);
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+  }
+
+  /* --------------------- Send message --------------------- */
   async function sendMessage() {
     const question = input.trim();
     if (!question || loading) return;
@@ -3537,19 +1512,20 @@ export default function ChatScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question,
-          ui_lang: uiLang, // "hi" | "garhwali" | "en"
+          ui_lang: uiLang,
           mode: "auto",
           history: historyForBackend,
           user_meta: userMeta,
         }),
       });
 
-      if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-      const data = await res.json();
+      if (!res.ok)
+        throw new Error(`API error: ${res.status} ${res.statusText}`);
 
-      // Support both old style (message/cards) and new AskResponse (response/audio_url/sources)
-      const responseHtml =
-        stripApplyReadMore(data.message || data.response || "");
+      const data = await res.json();
+      const responseHtml = stripApplyReadMore(
+        data.message || data.response || ""
+      );
       const sources = Array.isArray(data.sources) ? data.sources : [];
       const cards = Array.isArray(data.cards) ? data.cards : [];
       const audioUrl = data.audio_url || null;
@@ -3561,7 +1537,7 @@ export default function ChatScreen() {
           type: "answer+cards",
           text: responseHtml,
           cards,
-          lang: uiLang, // "hi" | "garhwali" | "en"
+          lang: uiLang,
           sources,
           audio_url: audioUrl,
         };
@@ -3578,13 +1554,13 @@ export default function ChatScreen() {
 
       setChats((prev) =>
         prev.map((chat) =>
-          chat.id === activeChatId ? { ...chat, messages: [...chat.messages, botMsg] } : chat
+          chat.id === activeChatId
+            ? { ...chat, messages: [...chat.messages, botMsg] }
+            : chat
         )
       );
-
-      // ❌ NO auto-play – speaker sirf click par hi chalega
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
       const errorMsg = {
         from: "bot",
         type: "text",
@@ -3594,7 +1570,9 @@ export default function ChatScreen() {
       };
       setChats((prev) =>
         prev.map((chat) =>
-          chat.id === activeChatId ? { ...chat, messages: [...chat.messages, errorMsg] } : chat
+          chat.id === activeChatId
+            ? { ...chat, messages: [...chat.messages, errorMsg] }
+            : chat
         )
       );
     } finally {
@@ -3602,368 +1580,517 @@ export default function ChatScreen() {
     }
   }
 
-  function handleKeyDown(e) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  }
-
-  function handleSelectChat(chatId) {
-    setActiveChatId(chatId);
-    setSpeakingKey(null);
-    setCopiedKey(null);
-<<<<<<< HEAD
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current = null;
-    }
-=======
-    if (typeof window !== "undefined" && window.speechSynthesis) window.speechSynthesis.cancel();
->>>>>>> 2022a3691b16446a688402e42e8bdbddc86a2fee
-  }
-
   if (!activeChat) return null;
 
+  // Simple grouping for "Today" / "Yesterday" in sidebar (visual only)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  const todayChats = chats.filter((c) => {
+    const d = new Date(c.createdAt);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime() === today.getTime();
+  });
+
+  const yesterdayChats = chats.filter((c) => {
+    const d = new Date(c.createdAt);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime() === yesterday.getTime();
+  });
+
+  const otherChats = chats.filter(
+    (c) => !todayChats.includes(c) && !yesterdayChats.includes(c)
+  );
+
+  // Static three-column grid (left + center + right)
+  const gridCols = "grid-cols-[260px_1fr_320px]";
+
+  /* ======================= UI LAYOUT ======================= */
   return (
     <>
-      <section className="h-full w-full flex gap-4 overflow-hidden">
-        {/* Left: chat history sidebar */}
-        <aside
-          className={[
-            "bg-white rounded-3xl shadow-md flex flex-col transition-all duration-200",
-            showSidebar ? "w-64 p-4" : "w-0 p-0",
-          ].join(" ")}
+      <div className="flex h-screen w-full flex-col bg-background-light dark:bg-background-dark font-display text-text-light dark:text-text-dark overflow-hidden">
+        {/* (Header handled by outer layout / navbar, so omitted here) */}
+
+        {/* ================= MAIN CONTENT GRID ================= */}
+        <main
+          className={`grid flex-1 overflow-hidden ${gridCols} gap-x-4 transition-[grid-template-columns] duration-200`}
         >
-          {showSidebar && (
-            <>
-              <div className="flex items-center justify-between mb-3">
-                <button
-                  type="button"
-                  onClick={handleNewChat}
-                  className="text-xs px-3 py-2 rounded-full bg-[#166534] text-white hover:bg-[#14532d]"
-                  title={isHi ? "नया चैट" : "New chat"}
-                >
-                  {isHi ? "+ नया चैट" : "+ New chat"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowSidebar(false)}
-                  className="w-7 h-7 text-xs rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
-                  title={isHi ? "छुपाएँ" : "Hide"}
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto space-y-1 text-xs">
-                {chats.map((chat) => (
-                  <button
-                    key={chat.id}
-                    type="button"
-                    onClick={() => handleSelectChat(chat.id)}
-                    className={`w-full text-left px-3 py-2 rounded-2xl border flex items-center justify-between gap-2 ${
-                      chat.id === activeChatId
-                        ? "bg-[#E6F4EA] border-[#166534] text-gray-900"
-                        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
-                    }`}
-                    title={isHi ? "खोलें" : "Open"}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="truncate font-medium">{chat.title}</div>
-                      <div className="text-[10px] text-gray-400">
-                        {new Date(chat.createdAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => handleDeleteChat(chat.id, e)}
-                      className="ml-1 text-[11px] text-red-500 hover:text-red-700"
-                      title={isHi ? "चैट हटाएँ" : "Delete chat"}
-                      aria-label={isHi ? "चैट हटाएँ" : "Delete chat"}
-                    >
-                      🗑
-                    </button>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </aside>
-
-        {/* Middle + right column */}
-        <div className="flex-1 flex gap-4 overflow-hidden">
-          {/* Middle: language toggle + chat UI (chat area keeps internal toggle) */}
-          <div className="flex-1 flex flex-col gap-3">
-            {/* Top row: sidebar icon + chat's language toggle */}
-            <div className="w-full flex items-center justify-between pr-4">
+          {/* =============== LEFT COLUMN (Chat List) =============== */}
+          <aside className="flex flex-col border-r border-black/10 dark:border-white/10 bg-background-light dark:bg-background-dark overflow-hidden">
+            {/* Top: New chat */}
+            <div className="p-3 flex items-center gap-2 border-b border-black/5 dark:border-white/5 shrink-0">
               <button
-                type="button"
-                onClick={() => setShowSidebar((s) => !s)}
-                className="w-8 h-8 rounded-full bg-white shadow flex items-center justify-center text-sm"
-                title={showSidebar ? (isHi ? "इतिहास छुपाएँ" : "Hide history") : (isHi ? "इतिहास दिखाएँ" : "Show history")}
+                onClick={handleNewChat}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg h-10 bg-primary px-4 text-sm font-bold text-white hover:bg-primary/90"
               >
-                ☰
+                <span className="material-symbols-outlined text-xl">add</span>
+                <span>New chat</span>
               </button>
+            </div>
 
-              <div className="flex gap-2 text-[11px] ml-auto">
+            {/* Chat list scrollable */}
+            <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-2 py-3">
+              {todayChats.length > 0 && (
+                <div>
+                  <h3 className="px-2 text-xs font-semibold uppercase text-text-subtle-light dark:text-text-subtle-dark">
+                    Today
+                  </h3>
+                  <ul className="mt-1 flex flex-col gap-1">
+                    {todayChats.map((chat) => (
+                      <li key={chat.id}>
+                        <button
+                          onClick={() => handleSelectChat(chat.id)}
+                          className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                            chat.id === activeChatId
+                              ? "bg-primary/10 dark:bg-primary/20 text-primary dark:text-green-300 font-medium"
+                              : "text-text-light dark:text-text-dark hover:bg-black/5 dark:hover:bg-white/5"
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-base text-text-subtle-light">
+                            chat_bubble
+                          </span>
+                          <span className="flex-1 truncate">{chat.title}</span>
+                          <span
+                            className="material-symbols-outlined text-[16px] text-red-400 opacity-0 group-hover:opacity-100"
+                            onClick={(e) => handleDeleteChat(chat.id, e)}
+                          >
+                            delete
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {yesterdayChats.length > 0 && (
+                <div>
+                  <h3 className="px-2 text-xs font-semibold uppercase text-text-subtle-light dark:text-text-subtle-dark">
+                    Yesterday
+                  </h3>
+                  <ul className="mt-1 flex flex-col gap-1">
+                    {yesterdayChats.map((chat) => (
+                      <li key={chat.id}>
+                        <button
+                          onClick={() => handleSelectChat(chat.id)}
+                          className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                            chat.id === activeChatId
+                              ? "bg-primary/10 dark:bg-primary/20 text-primary dark:text-green-300 font-medium"
+                              : "text-text-light dark:text-text-dark hover:bg-black/5 dark:hover:bg-white/5"
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-base text-text-subtle-light">
+                            chat_bubble
+                          </span>
+                          <span className="flex-1 truncate">{chat.title}</span>
+                          <span
+                            className="material-symbols-outlined text-[16px] text-red-400 opacity-0 group-hover:opacity-100"
+                            onClick={(e) => handleDeleteChat(chat.id, e)}
+                          >
+                            delete
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {otherChats.length > 0 && (
+                <div>
+                  <h3 className="px-2 text-xs font-semibold uppercase text-text-subtle-light dark:text-text-subtle-dark">
+                    Older
+                  </h3>
+                  <ul className="mt-1 flex flex-col gap-1">
+                    {otherChats.map((chat) => (
+                      <li key={chat.id}>
+                        <button
+                          onClick={() => handleSelectChat(chat.id)}
+                          className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                            chat.id === activeChatId
+                              ? "bg-primary/10 dark:bg-primary/20 text-primary dark:text-green-300 font-medium"
+                              : "text-text-light dark:text-text-dark hover:bg-black/5 dark:hover:bg-white/5"
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-base text-text-subtle-light">
+                            chat_bubble
+                          </span>
+                          <span className="flex-1 truncate">{chat.title}</span>
+                          <span
+                            className="material-symbols-outlined text-[16px] text-red-400 opacity-0 group-hover:opacity-100"
+                            onClick={(e) => handleDeleteChat(chat.id, e)}
+                          >
+                            delete
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </aside>
+
+          {/* =============== CENTER COLUMN (Chat Interface) =============== */}
+          <div className="flex flex-col bg-white/50 dark:bg-black/20 overflow-hidden">
+            {/* Chat Header (conversation title + bot language toggle) */}
+            <div className="flex h-14 shrink-0 items-center justify-between border-b border-black/10 dark:border-white/10 px-4">
+              <h2 className="font-semibold truncate">
+                {activeChat?.title || "Panchayat Sahayika"}
+              </h2>
+              <div className="flex items-center gap-2 text-xs">
                 <button
-                  type="button"
                   onClick={() => setUiLang("hi")}
-                  className={`px-3 py-1 rounded-full border text-xs ${
+                  className={`rounded-full h-8 px-3 font-bold border text-xs ${
                     uiLang === "hi"
-                      ? "bg-[#166534] text-white border-[#166534]"
-                      : "bg-white text-gray-700 border-gray-300"
-                  }`}
-                  title={isHi ? "यहाँ चैट भाषा बदलें (हिन्दी)" : "Change chat language (Hindi)"}
-                >
-                  {isHi ? "हिन्दी/ Hinglish" : "हिन्दी / Hinglish"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUiLang("garhwali")}
-                  className={`px-3 py-1 rounded-full border text-xs ${
-                    uiLang === "garhwali"
-                      ? "bg-[#166534] text-white border-[#166534]"
-                      : "bg-white text-gray-700 border-gray-300"
+                      ? "bg-primary text-white border-primary"
+                      : "bg-black/5 dark:bg-white/5 text-text-subtle-light dark:text-text-subtle-dark border-transparent"
                   }`}
                 >
-                  गढ़वाली
+                  हिन्दी
                 </button>
                 <button
-                  type="button"
                   onClick={() => setUiLang("en")}
-                  className={`px-3 py-1 rounded-full border text-xs ${
+                  className={`rounded-full h-8 px-3 font-bold border text-xs ${
                     uiLang === "en"
-                      ? "bg-[#166534] text-white border-[#166534]"
-                      : "bg-white text-gray-700 border-gray-300"
+                      ? "bg-primary text-white border-primary"
+                      : "bg-black/5 dark:bg-white/5 text-text-subtle-light dark:text-text-subtle-dark border-transparent"
                   }`}
-                  title={isHi ? "यहाँ चैट भाषा बदलें (अंग्रेज़ी)" : "Change chat language (English)"}
                 >
-                  {isHi ? "English" : "English"}
+                  English
+                </button>
+                <button
+                  onClick={() => setUiLang("garhwali")}
+                  className={`rounded-full h-8 px-3 font-bold border text-xs ${
+                    uiLang === "garhwali"
+                      ? "bg-primary text-white border-primary"
+                      : "bg-black/5 dark:bg:white/5 text-text-subtle-light dark:text-text-subtle-dark border-transparent"
+                  }`}
+                >
+                  Garhwali
                 </button>
               </div>
             </div>
 
-            {/* Chat area – only this scrolls */}
-            <div className="flex-1 flex justify-center overflow-hidden">
-              <div className="w-full max-w-3xl bg-white rounded-3xl shadow-md p-4 flex flex-col gap-3 overflow-y-auto">
+            {/* Message Area – centered column, scrollable */}
+            <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 md:py-6">
+              <div className="space-y-6 max-w-3xl mx-auto">
                 {messages.map((msg, idx) => {
                   const msgKey = `${activeChatId}-${idx}`;
 
+                  // USER MESSAGE
                   if (msg.from === "user") {
+                    const initial = (user?.username || "U")
+                      .charAt(0)
+                      .toUpperCase();
                     return (
                       <div
                         key={msgKey}
-                        className="self-end bg-[#166534] text-white text-xs rounded-2xl px-3 py-2 max-w-[60%]"
+                        className="flex items-end justify-end gap-3"
                       >
-                        {msg.text}
+                        <div className="flex w-full flex-col items-end gap-1">
+                          <p className="text-xs text-text-subtle-light dark:text-text-subtle-dark">
+                            {isHi ? "आप" : "You"}
+                          </p>
+                          <p className="rounded-2xl rounded-br-lg bg-primary px-4 py-2.5 text-base text-white">
+                            {msg.text}
+                          </p>
+                        </div>
+                        <div className="size-9 shrink-0 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                          {initial}
+                        </div>
                       </div>
                     );
                   }
 
+                  // BOT: ANSWER + CARDS
                   if (msg.type === "answer+cards") {
                     return (
-                      <div key={msgKey} className="self-start max-w-[85%] flex flex-col gap-2">
-                        <div className="bg-[#E6F4EA] text-[10px] text-gray-800 rounded-2xl px-3 py-1 inline-block">
-                          🤖 Panchayat Sahayika
+                      <div key={msgKey} className="flex items-end gap-3">
+                        {/* Bot avatar */}
+                        <div className="size-9 shrink-0 rounded-full bg-primary/20 flex items-center justify-center">
+                          <div className="size-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
+                            S
+                          </div>
                         </div>
 
-                        <AnswerCard>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[10px] text-gray-500">
-                              Panchayat Sahayika ka jawab
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => handleSpeak(msgKey, msg)}
-                                className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]"
-                                title={speakingKey === msgKey ? (isHi ? "बोलना बंद करें" : "Stop") : (isHi ? "उत्तर सुनें" : "Listen")}
-                              >
-                                {speakingKey === msgKey ? "⏹" : "🔈"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleCopy(msgKey, msg)}
-                                className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]"
-                                title={isHi ? "कॉपि करें" : "Copy"}
-                              >
-                                📋
-                              </button>
-                              {copiedKey === msgKey && <span className="text-[10px] text-gray-500">{isHi ? "कॉपी हुआ" : "Copied"}</span>}
-                            </div>
-                          </div>
+                        <div className="flex w-full flex-col items-start gap-1">
+                          <p className="text-xs text-text-subtle-light dark:text-text-subtle-dark">
+                            Sahayika Bot
+                          </p>
 
-                          <div className="text-xs leading-relaxed whitespace-pre-line" dangerouslySetInnerHTML={{ __html: msg.text }} />
-
-                          {msg.sources?.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {msg.sources.map((s, i) => {
-                                const label = s.name_hi || s.name_en;
-                                const hasData = getSchemeByLabel(label);
-                                if (!hasData) return null;
-                                return (
-                                  <button key={i} type="button" onClick={() => openSchemeByName(label)} className="px-3 py-1 bg-[#ECFDF5] text-[10px] text-[#166534] rounded-full border border-[#BBF7D0] cursor-pointer hover:bg-[#D1F1DE]">
-                                    {label}
-                                  </button>
-                                );
-                              })}
-                            </div>
+                          {/* Little text bubble if any intro text */}
+                          {msg.text && (
+                            <p className="rounded-2xl rounded-bl-lg bg-bot-bubble-light dark:bg-bot-bubble-dark px-4 py-2.5 text-base text-text-light dark:text-text-dark whitespace-pre-line">
+                              <span
+                                dangerouslySetInnerHTML={{ __html: msg.text }}
+                              />
+                            </p>
                           )}
 
-                          {msg.cards?.length > 0 && (
-                            <div className="mt-3 space-y-2">
-                              {msg.cards.map((c, i) => {
-                                const label = c.title_hi || c.title;
-                                const hasData = getSchemeByLabel(label);
+                          {/* Main AnswerCard like in reference */}
+                          <div className="mt-2 w-full">
+                            <AnswerCard>
+                              <div className="flex items-center justify-end gap-1 border-b border-black/10 dark:border-white/10 px-3 py-1.5">
+                                <button
+                                  onClick={() => handleSpeak(msgKey, msg)}
+                                  className="flex size-7 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-text-subtle-light dark:text-text-subtle-dark"
+                                >
+                                  {speakingKey === msgKey ? (
+                                    <span className="material-symbols-outlined text-base">
+                                      stop
+                                    </span>
+                                  ) : (
+                                    <span className="material-symbols-outlined text-base">
+                                      volume_up
+                                    </span>
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => handleCopy(msgKey, msg)}
+                                  className="flex size-7 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-text-subtle-light dark:text-text-subtle-dark"
+                                >
+                                  <span className="material-symbols-outlined text-base">
+                                    content_copy
+                                  </span>
+                                </button>
+                                {copiedKey === msgKey && (
+                                  <span className="text-[10px] text-gray-500">
+                                    {isHi ? "कॉपी हुआ" : "Copied"}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Cards from backend (scheme tiles) */}
+                              <div className="p-4 space-y-2">
+                                {msg.cards?.map((c, i) => {
+                                  const label = c.title_hi || c.title;
+                                  const hasData = getSchemeByLabel(label);
+                                  if (!hasData) return null;
+
+                                  return (
+                                    <button
+                                      key={i}
+                                      onClick={() =>
+                                        setSelectedScheme(hasData)
+                                      }
+                                      className="w-full text-left rounded-2xl bg-card-light dark:bg-card-dark border border-black/10 dark:border-white/10 px-3 py-2 hover:bg-black/5 dark:hover:bg-white/5 transition cursor-pointer"
+                                    >
+                                      <div className="text-sm font-semibold text-text-light dark:text-text-dark">
+                                        {c.title}
+                                      </div>
+                                      {c.subtitle && (
+                                        <div className="text-[11px] text-text-subtle-light dark:text-text-subtle-dark mt-0.5">
+                                          {c.subtitle}
+                                        </div>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </AnswerCard>
+                          </div>
+
+                          {/* Source pills */}
+                          {msg.sources?.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {msg.sources.map((s, i) => {
+                                const label = s.name_hi || s.name_en;
+                                const hasData = findScheme(label);
                                 if (!hasData) return null;
                                 return (
-// <<<<<<< HEAD
-//                                   <button
-//                                     key={i}
-//                                     type="button"
-//                                     onClick={() => openSchemeByName(label)}
-//                                     className="w-full text-left border border-[#E5E7EB] rounded-2xl bg-[#F9FAFB] px-3 py-2 hover:bg:white hover:shadow-sm transition cursor-pointer"
-//                                   >
-//                                     <div className="text-xs font-semibold text-gray-900">
-//                                       {c.title}
-//                                     </div>
-//                                     {c.subtitle && (
-//                                       <div className="text-[11px] text-gray-600 mt-0.5">
-//                                         {c.subtitle}
-//                                       </div>
-//                                     )}
-// =======
-//                                   <button key={i} type="button" onClick={() => openSchemeByName(label)} className="w-full text-left border border-[#E5E7EB] rounded-2xl bg-[#F9FAFB] px-3 py-2 hover:bg-white hover:shadow-sm transition cursor-pointer">
-//                                     <div className="text-xs font-semibold text-gray-900">{c.title}</div>
-//                                     {c.subtitle && <div className="text-[11px] text-gray-600 mt-0.5">{c.subtitle}</div>}
-// >>>>>>> 2022a3691b16446a688402e42e8bdbddc86a2fee
-//                                   </button>
                                   <button
                                     key={i}
-                                    type="button"
-                                    onClick={() => openSchemeByName(label)}
-                                    className="w-full text-left border border-[#E5E7EB] rounded-2xl bg-[#F9FAFB] px-3 py-2 hover:bg-white hover:shadow-sm transition cursor-pointer"
+                                    onClick={() => setSelectedScheme(hasData)}
+                                    className="px-3 py-1 bg-green-50 border border-green-200 text-green-700 text-[10px] rounded-full hover:bg-green-100"
                                   >
-                                    <div className="text-xs font-semibold text-gray-900">
-                                      {c.title}
-                                    </div>
-                                    {c.subtitle && (
-                                      <div className="text-[11px] text-gray-600 mt-0.5">
-                                        {c.subtitle}
-                                      </div>
-                                    )}
-                                  </button>
-
-                                );
-                              })}
-                            </div>
-                          )}
-                        </AnswerCard>
-                      </div>
-                    );
-                  }
-
-                  if (msg.type === "answer") {
-                    return (
-                      <div key={msgKey} className="self-start max-w-[80%] flex flex-col gap-2">
-                        <div className="bg-[#E6F4EA] text-[10px] text-gray-800 rounded-2xl px-3 py-1 inline-block">🤖 Panchayat Sahayika</div>
-                        <AnswerCard>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[10px] text-gray-500">Panchayat Sahayika ka jawab</span>
-                            <div className="flex items-center gap-1">
-                              <button type="button" onClick={() => handleSpeak(msgKey, msg)} className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]" title={speakingKey === msgKey ? (isHi ? "बोलना बंद करें" : "Stop") : (isHi ? "उत्तर सुनें" : "Listen")}>{speakingKey === msgKey ? "⏹" : "🔈"}</button>
-                              <button type="button" onClick={() => handleCopy(msgKey, msg)} className="text-xs px-2 py-1 rounded-full bg-[#E6F4EA] hover:bg-[#D1F1DE]" title={isHi ? "कॉपि करें" : "Copy"}>📋</button>
-                              {copiedKey === msgKey && <span className="text-[10px] text-gray-500">{isHi ? "कॉपी हुआ" : "Copied"}</span>}
-                            </div>
-                          </div>
-
-                          <div className="text-xs leading-relaxed whitespace-pre-line" dangerouslySetInnerHTML={{ __html: msg.text }} />
-
-                          {msg.sources?.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {msg.sources.map((s, i) => {
-                                const label = s.name_hi || s.name_en;
-                                const hasData = getSchemeByLabel(label);
-                                if (!hasData) return null;
-                                return (
-                                  <button key={i} type="button" onClick={() => openSchemeByName(label)} className="px-3 py-1 bg-[#ECFDF5] text-[10px] text-[#166534] rounded-full border border-[#BBF7D0] cursor-pointer hover:bg-[#D1F1DE]">
                                     {label}
                                   </button>
                                 );
                               })}
                             </div>
                           )}
-                        </AnswerCard>
+                        </div>
                       </div>
                     );
                   }
 
+                  // BOT: NORMAL ANSWER / TEXT
+                  if (msg.type === "answer" || msg.type === "text") {
+                    return (
+                      <div key={msgKey} className="flex items-end gap-3">
+                        <div className="size-9 shrink-0 rounded-full bg-primary/20 flex items-center justify-center">
+                          <div className="size-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
+                            S
+                          </div>
+                        </div>
+
+                        <div className="flex w-full flex-col items-start gap-1">
+                          <p className="text-xs text-text-subtle-light dark:text-text-subtle-dark">
+                            Sahayika Bot
+                          </p>
+
+                          <AnswerCard>
+                            <div className="flex items-center justify-end gap-1 border-b border-black/10 dark:border-white/10 px-3 py-1.5">
+                              <button
+                                onClick={() => handleSpeak(msgKey, msg)}
+                                className="flex size-7 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-text-subtle-light dark:text-text-subtle-dark"
+                              >
+                                {speakingKey === msgKey ? (
+                                  <span className="material-symbols-outlined text-base">
+                                    stop
+                                  </span>
+                                ) : (
+                                  <span className="material-symbols-outlined text-base">
+                                    volume_up
+                                  </span>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleCopy(msgKey, msg)}
+                                className="flex size-7 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-text-subtle-light dark:text-text-subtle-dark"
+                              >
+                                <span className="material-symbols-outlined text-base">
+                                  content_copy
+                                </span>
+                              </button>
+                              {copiedKey === msgKey && (
+                                <span className="text-[10px] text-gray-500">
+                                  {isHi ? "कॉपी हुआ" : "Copied"}
+                                </span>
+                              )}
+                            </div>
+
+                            <div
+                              className="p-4 text-sm leading-relaxed whitespace-pre-line text-text-light dark:text-text-dark"
+                              dangerouslySetInnerHTML={{ __html: msg.text }}
+                            />
+
+                            {msg.sources?.length > 0 && (
+                              <div className="border-t border-black/10 dark:border-white/10 px-4 py-3 flex flex-wrap gap-2">
+                                {msg.sources.map((s, i) => {
+                                  const label = s.name_hi || s.name_en;
+                                  const hasData = findScheme(label);
+                                  if (!hasData) return null;
+                                  return (
+                                    <button
+                                      key={i}
+                                      onClick={() =>
+                                        setSelectedScheme(hasData)
+                                      }
+                                      className="px-3 py-1 bg-green-50 border border-green-200 text-green-700 text-[10px] rounded-full hover:bg-green-100"
+                                    >
+                                      {label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </AnswerCard>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Fallback
                   return (
-                    <div key={msgKey} className="self-start bg-[#E6F4EA] text-xs text-gray-800 rounded-2xl px-3 py-2 max-w-[70%]">
-                      <div className="font-semibold mb-1">🤖 Panchayat Sahayika</div>
-                      <div>{msg.text}</div>
+                    <div key={msgKey} className="flex items-end gap-3">
+                      <div className="size-9 shrink-0 rounded-full bg-primary/20 flex items-center justify-center">
+                        <div className="size-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
+                          S
+                        </div>
+                      </div>
+                      <div className="flex w-full flex-col items-start gap-1">
+                        <p className="text-xs text-text-subtle-light dark:text-text-subtle-dark">
+                          Sahayika Bot
+                        </p>
+                        <p className="rounded-2xl rounded-bl-lg bg-bot-bubble-light dark:bg-bot-bubble-dark px-4 py-2.5 text-base text-text-light dark:text-text-dark">
+                          {msg.text}
+                        </p>
+                      </div>
                     </div>
                   );
                 })}
 
-                {loading && <div className="self-start bg-[#E6F4EA] text-[10px] text-gray-600 rounded-2xl px-3 py-1 max-w-[40%]">{isHi ? "सोच रही हूँ..." : "Thinking..."}</div>}
+                {loading && (
+                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                    <div className="size-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                    <span>{isHi ? "सोच रही हूँ..." : "Thinking…"}</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Input bar */}
-            <div className="w-full max-w-3xl bg-white border-t border-gray-200 px-3 py-3 rounded-t-3xl flex items-center gap-3">
-              <button className="w-10 h-10 rounded-full bg-[#166534] text-white flex items-center justify-center text-sm" type="button" onClick={startListening} title={isHi ? "वॉइस इनपुट" : "Voice input"}>
-                {listening ? "🔴" : "🎙️"}
-              </button>
+            {/* Fixed Chat Input Footer (center column bottom, centered width) */}
+            <div className="shrink-0 border-t border-black/10 dark:border-white/10 px-4 py-3 bg-background-light dark:bg-background-dark">
+              <div className="relative flex items-center max-w-3xl mx-auto">
+                <button
+                  onClick={startListening}
+                  className="absolute left-2 flex size-8 items-center justify-center rounded-full hover:bg-black/10 dark:hover:bg-white/10"
+                >
+                  {listening ? (
+                    <span className="material-symbols-outlined text-text-subtle-light dark:text-text-subtle-dark">
+                      stop
+                    </span>
+                  ) : (
+                    <span className="material-symbols-outlined text-text-subtle-light dark:text-text-subtle-dark">
+                      mic
+                    </span>
+                  )}
+                </button>
 
-              <input
-                className="flex-1 px-4 py-2 rounded-full border border-gray-300 text-xs outline-none"
-                placeholder={isHi ? "अपना सवाल यहाँ लिखें..." : "Type your question... / अपना सवाल यहाँ लिखें..."}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-              />
+                <textarea
+                  rows={1}
+                  className="w-full resize-none rounded-xl border-0 bg-black/5 dark:bg-white/5 py-2.5 pl-12 pr-12 text-base focus:ring-2 focus:ring-primary"
+                  placeholder={
+                    isHi
+                      ? "अपना प्रश्न पूछें... / Ask your question..."
+                      : "Ask your question... / अपना प्रश्न पूछें..."
+                  }
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                />
 
-              <button className="w-10 h-10 rounded-full bg-[#166534] text-white flex items-center justify-center text-sm disabled:opacity-60" type="button" onClick={sendMessage} disabled={loading || !input.trim()} title={isHi ? "भेजें" : "Send"}>
-                ➤
-              </button>
+                <button
+                  onClick={sendMessage}
+                  disabled={loading || !input.trim()}
+                  className="absolute right-2 flex size-8 items-center justify-center rounded-full bg-primary text-white hover:bg-primary/90 disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined">send</span>
+                </button>
+              </div>
+              {listening && (
+                <div className="mt-1 text-[11px] text-green-700 max-w-3xl mx-auto">
+                  🎙️ {isHi ? "मैं आपकी बात सुन रही हूँ..." : "I'm listening..."}
+                </div>
+              )}
             </div>
-
-            {listening && <div className="text-[11px] text-green-700 pl-14 pb-2">🎙️ {isHi ? "मैं आपकी बात सुन रही हूँ... साफ़-साफ़ बोलिए।" : "I'm listening... speak clearly."}</div>}
           </div>
 
-          {/* Right side: 3 bilingual cards but now fully Hindi when isHi */}
-          <div className="w-80 flex flex-col gap-4 pr-4 pt-10">
-            <button type="button" onClick={() => navigate("/finder")} className="bg-white rounded-3xl shadow-md border border-[#F4E3C3] px-4 py-4 text-left hover:shadow-lg transition cursor-pointer" title={isHi ? "योजनाएँ / सेवाएँ" : "Find Schemes & Services"}>
-              <div className="text-xs font-semibold text-[#166534] mb-1">{isHi ? "योजनाएँ / सेवाएँ / प्रोग्राम" : "योजनाएँ / सेवाएँ / प्रोग्राम"}</div>
-              <div className="text-sm font-semibold mb-1">{isHi ? "सरकारी योजनाएं खोजें" : "Find Schemes & Services"}</div>
-              <p className="text-[11px] text-gray-600 leading-relaxed">{isHi ? "अपने गाँव, जाति, सेवा या अन्य विवरण के आधार पर आपके लिए उपलब्ध सरकारी योजनाएँ देखें।" : "Check government schemes available for your village, caste, service or other details."}</p>
-            </button>
+          {/* =============== RIGHT COLUMN (Global RightSidebar) =============== */}
+          <aside className="flex flex-col border-l border-black/10 dark:border-white/10 bg-background-light dark:bg-background-dark overflow-y-auto px-3 py-4">
+            <div className="max-w-xs mx-auto w-full">
+              <RightSidebar />
+            </div>
+          </aside>
+        </main>
+      </div>
 
-            <button type="button" onClick={() => navigate("/my-panchayat/trainings")} className="bg-white rounded-3xl shadow-md border border-[#F4E3C3] px-4 py-4 text-left hover:shadow-lg transition cursor-pointer" title={isHi ? "प्रशिक्षण / क्षमता विकास" : "Panchayat Trainings Finder"}>
-              <div className="text-xs font-semibold text-[#166534] mb-1">{isHi ? "प्रशिक्षण / क्षमता विकास" : "प्रशिक्षण / क्षमता विकास"}</div>
-              <div className="text-sm font-semibold mb-1">{isHi ? "पंचायत प्रशिक्षण खोजक" : "Panchayat Trainings Finder"}</div>
-              <p className="text-[11px] text-gray-600 leading-relaxed">{isHi ? "जिला और ब्लॉक के हिसाब से सभी पंचायत प्रशिक्षण एक ही जगह पर देखें।" : "View all Panchayat trainings by District and Block in one place."}</p>
-            </button>
-
-            <button type="button" onClick={() => navigate("/my-panchayat/planning")} className="bg-white rounded-3xl shadow-md border border-[#F4E3C3] px-4 py-4 text-left hover:shadow-lg transition cursor-pointer" title={isHi ? "स्मार्ट ग्राम प्लानिंग" : "Smart Gram Planning"}>
-              <div className="text-xs font-semibold text-[#166534] mb-1">{isHi ? "स्मार्ट ग्राम प्लानिंग" : "स्मार्ट ग्राम प्लानिंग"}</div>
-              <div className="text-sm font-semibold mb-1">{isHi ? "स्मार्ट ग्राम योजना उपकरण" : "Smart Gram Planning Tool"}</div>
-              <p className="text-[11px] text-gray-600 leading-relaxed">{isHi ? "ग्राम इन्फ्रा डेफिसिट इंडेक्स के आधार पर विकास प्राथमिकताएँ और सुझाए गए परियोजनाएं देखें।" : "See development priorities and suggested projects based on village infra deficit index."}</p>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Scheme popup */}
-      <SchemeDetailsModal scheme={selectedScheme} onClose={() => setSelectedScheme(null)} />
+      {/* Scheme Modal */}
+      {selectedScheme && (
+        <SchemeDetailsModal
+          scheme={selectedScheme}
+          onClose={() => setSelectedScheme(null)}
+        />
+      )}
     </>
   );
 }

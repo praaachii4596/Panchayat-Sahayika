@@ -4,6 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 
+import SidebarContainer from "../components/layout/SidebarContainer.jsx";
+import LeftSidebar from "../components/layout/LeftSidebar.jsx";
+import RightSidebar from "../components/layout/RightSidebar.jsx";
+
 export default function EditProfileScreen() {
   const { user, updateProfile } = useAuth();
   const { lang } = useLanguage();
@@ -76,17 +80,19 @@ export default function EditProfileScreen() {
       };
 
       await updateProfile(payload);
+
       setSuccessMsg(
         isHi
           ? "प्रोफ़ाइल सफलतापूर्वक अपडेट हो गई।"
           : "Profile updated successfully."
       );
 
-      setTimeout(() => navigate("/dashboard"), 700);
+      setTimeout(() => navigate("/dashboard"), 750);
     } catch (err) {
-      console.error(err);
       setError(
-        isHi ? "अपडेट करते समय त्रुटि हुई।" : err.message || "Update failed"
+        isHi
+          ? "अपडेट करते समय त्रुटि हुई।"
+          : err.message || "Update failed"
       );
     } finally {
       setSaving(false);
@@ -94,131 +100,132 @@ export default function EditProfileScreen() {
   };
 
   return (
-    <section className="flex justify-center mt-8 px-4">
-      <div className="w-full max-w-lg bg-white rounded-3xl shadow-soft border border-cardBorder px-6 py-6 space-y-4 text-left">
-        <h1 className="text-xl font-semibold text-textMain">
-          {isHi ? "अपनी प्रोफ़ाइल संपादित करें" : "Edit your profile"}
-        </h1>
-        <p className="text-[12px] text-gray-600">
-          {isHi
-            ? "अपनी जानकारी अपडेट करें ताकि सिफ़ारिशें आपके लिए प्रासंगिक रहें।"
-            : "Update your details so recommendations stay relevant."}
-        </p>
+    <SidebarContainer
+      leftContent={<LeftSidebar />}
+      rightContent={<RightSidebar />}
+    >
+      <section className="flex justify-center px-4 w-full">
+        <div className="w-full max-w-2xl bg-white dark:bg-[#2d2d2d] rounded-2xl shadow-soft border border-gray-200 dark:border-gray-700 p-8 md:p-10">
+          
+          {/* Title */}
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-extrabold text-textMain dark:text-white">
+              {isHi ? "अपनी प्रोफ़ाइल संपादित करें" : "Edit Your Profile"}
+            </h2>
+            <p className="mt-2 text-textSubtle dark:text-gray-300 text-sm">
+              {isHi
+                ? "अपनी जानकारी अपडेट करें ताकि सिफ़ारिशें सटीक रहें।"
+                : "Update your information to improve recommendations."}
+            </p>
+          </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm"
-        >
-          {/* Left column */}
-          <div className="space-y-3">
-            {/* Full name */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-medium text-gray-700">
+          {/* FORM */}
+          <form
+            onSubmit={handleSubmit}
+            className="grid grid-cols-1 sm:grid-cols-2 gap-6"
+          >
+            {/* Full Name */}
+            <label className="flex flex-col">
+              <p className="pb-2 text-sm font-medium dark:text-gray-200">
                 {isHi ? "पूरा नाम" : "Full Name"}
-              </label>
+              </p>
               <input
                 name="full_name"
                 value={form.full_name}
                 onChange={handleChange}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm outline-none focus:border-emerald-500"
+                placeholder={isHi ? "पूरा नाम दर्ज करें" : "Enter full name"}
+                className="h-12 px-4 rounded-xl border border-gray-300 
+                dark:border-gray-700 bg-[#FEF6EF] dark:bg-[#1a1a1a]
+                placeholder:text-gray-400 dark:placeholder:text-gray-300
+                focus:ring-2 focus:ring-primary/50"
               />
-            </div>
+            </label>
+
+            {/* District */}
+            <label className="flex flex-col">
+              <p className="pb-2 text-sm font-medium dark:text-gray-200">
+                {isHi ? "ज़िला" : "District"}
+              </p>
+              <input
+                name="district"
+                value={form.district}
+                onChange={handleChange}
+                placeholder={isHi ? "ज़िला दर्ज करें" : "Enter district"}
+                className="h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-[#FEF6EF] dark:bg-[#1a1a1a]"
+              />
+            </label>
+
+            {/* Block */}
+            <label className="flex flex-col">
+              <p className="pb-2 text-sm font-medium dark:text-gray-200">
+                {isHi ? "ब्लॉक" : "Block"}
+              </p>
+              <input
+                name="block"
+                value={form.block}
+                onChange={handleChange}
+                placeholder={isHi ? "ब्लॉक दर्ज करें" : "Enter block"}
+                className="h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-[#FEF6EF] dark:bg-[#1a1a1a]"
+              />
+            </label>
+
+            {/* Village Code */}
+            <label className="flex flex-col">
+              <p className="pb-2 text-sm font-medium dark:text-gray-200">
+                {isHi ? "गाँव कोड" : "Village Code"}
+              </p>
+              <input
+                name="village_code"
+                value={form.village_code}
+                onChange={handleChange}
+                placeholder={isHi ? "गाँव कोड दर्ज करें" : "Enter code"}
+                className="h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-[#FEF6EF] dark:bg-[#1a1a1a]"
+              />
+            </label>
 
             {/* Age */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-medium text-gray-700">
-                {isHi ? "उम्र" : "Age"}
-              </label>
+            <label className="flex flex-col">
+              <p className="pb-2 text-sm font-medium dark:text-gray-200">
+                {isHi ? "आयु" : "Age"}
+              </p>
               <input
                 type="number"
                 name="age"
                 value={form.age}
                 onChange={handleChange}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm outline-none focus:border-emerald-500"
+                placeholder={isHi ? "आयु दर्ज करें" : "Enter age"}
+                className="h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-[#FEF6EF] dark:bg-[#1a1a1a]"
               />
-            </div>
+            </label>
 
             {/* Gender */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-medium text-gray-700">
-                {isHi ? "लिंग (Gender)" : "Gender"}
-              </label>
+            <label className="flex flex-col">
+              <p className="pb-2 text-sm font-medium dark:text-gray-200">
+                {isHi ? "लिंग" : "Gender"}
+              </p>
               <select
                 name="gender"
                 value={form.gender}
                 onChange={handleChange}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm outline-none focus:border-emerald-500"
+                className="h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-[#FEF6EF] dark:bg-[#1a1a1a]"
               >
-                <option value="">
-                  {isHi ? "चुनें" : "Select"}
-                </option>
-                <option value="Female">
-                  {isHi ? "महिला (Female)" : "Female"}
-                </option>
-                <option value="Male">
-                  {isHi ? "पुरुष (Male)" : "Male"}
-                </option>
-                <option value="Other">
-                  {isHi ? "अन्य (Other)" : "Other"}
-                </option>
+                <option value="">{isHi ? "चुनें" : "Select"}</option>
+                <option value="Male">{isHi ? "पुरुष" : "Male"}</option>
+                <option value="Female">{isHi ? "महिला" : "Female"}</option>
+                <option value="Other">{isHi ? "अन्य" : "Other"}</option>
               </select>
-            </div>
-          </div>
+            </label>
 
-          {/* Right column */}
-          <div className="space-y-3">
-            {/* District */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-medium text-gray-700">
-                {isHi ? "ज़िला (District)" : "District"}
-              </label>
-              <input
-                name="district"
-                value={form.district}
-                onChange={handleChange}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            {/* Block */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-medium text-gray-700">
-                {isHi ? "ब्लॉक (Block)" : "Block"}
-              </label>
-              <input
-                name="block"
-                value={form.block}
-                onChange={handleChange}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            {/* Village Code */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-medium text-gray-700">
-                {isHi ? "गाँव कोड (Village Code)" : "Village Code"}
-              </label>
-              <input
-                name="village_code"
-                value={form.village_code}
-                onChange={handleChange}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm outline-none focus:border-emerald-500"
-              />
-            </div>
-          </div>
-
-          {/* New fields */}
-          <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
             {/* Disability */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-medium text-gray-700">
-                {isHi ? "विकलांगता (यदि हो)" : "Disability"}
-              </label>
+            <label className="flex flex-col">
+              <p className="pb-2 text-sm font-medium dark:text-gray-200">
+                {isHi ? "विकलांगता" : "Disability"}
+              </p>
               <select
                 name="disability"
                 value={form.disability}
                 onChange={handleChange}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm outline-none focus:border-emerald-500"
+                className="h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-[#FEF6EF] dark:bg-[#1a1a1a]"
               >
                 <option value="">
                   {isHi ? "नहीं / बताना नहीं चाहते"
@@ -240,18 +247,18 @@ export default function EditProfileScreen() {
                   {isHi ? "एक से अधिक (Multiple)" : "Multiple disabilities"}
                 </option>
               </select>
-            </div>
+            </label>
 
             {/* Occupation */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-medium text-gray-700">
-                {isHi ? "पेशा (Occupation)" : "Occupation"}
-              </label>
+            <label className="flex flex-col">
+              <p className="pb-2 text-sm font-medium dark:text-gray-200">
+                {isHi ? "पेशा" : "Occupation"}
+              </p>
               <select
                 name="occupation"
                 value={form.occupation}
                 onChange={handleChange}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm outline-none focus:border-emerald-500"
+                className="h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-[#FEF6EF] dark:bg-[#1a1a1a]"
               >
                 <option value="">
                   {isHi ? "चुनें" : "Select"}
@@ -281,18 +288,18 @@ export default function EditProfileScreen() {
                   {isHi ? "अन्य (Other)" : "Other"}
                 </option>
               </select>
-            </div>
+            </label>
 
             {/* Income */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-medium text-gray-700">
-                {isHi ? "आय वर्ग (Income Bracket)" : "Income Bracket"}
-              </label>
+            <label className="flex flex-col">
+              <p className="pb-2 text-sm font-medium dark:text-gray-200">
+                {isHi ? "आय वर्ग" : "Income Bracket"}
+              </p>
               <select
                 name="income_bracket"
                 value={form.income_bracket}
                 onChange={handleChange}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm outline-none focus:border-emerald-500"
+                className="h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-[#FEF6EF] dark:bg-[#1a1a1a]"
               >
                 <option value="">
                   {isHi ? "चुनें" : "Select"}
@@ -310,18 +317,18 @@ export default function EditProfileScreen() {
                   {isHi ? "मध्यम वर्ग" : "Middle"}
                 </option>
               </select>
-            </div>
+            </label>
 
             {/* Social Category */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-medium text-gray-700">
-                {isHi ? "सामाजिक वर्ग (Social Category)" : "Social Category"}
-              </label>
+            <label className="flex flex-col">
+              <p className="pb-2 text-sm font-medium dark:text-gray-200">
+                {isHi ? "सामाजिक वर्ग" : "Social Category"}
+              </p>
               <select
                 name="social_category"
                 value={form.social_category}
                 onChange={handleChange}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm outline-none focus:border-emerald-500"
+                className="h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-[#FEF6EF] dark:bg-[#1a1a1a]"
               >
                 <option value="">{isHi ? "चुनें" : "Select"}</option>
                 <option value="SC">
@@ -337,39 +344,41 @@ export default function EditProfileScreen() {
                   {isHi ? "सामान्य (General)" : "General"}
                 </option>
               </select>
-            </div>
-          </div>
-
-          {/* Interest Tag */}
-          <div className="sm:col-span-2 space-y-1">
-            <label className="block text-[11px] font-medium text-gray-700">
-              {isHi ? "रुचि टैग (Interest Tag)" : "Interest tag"}
             </label>
-            <input
-              name="interest_tag"
-              value={form.interest_tag}
-              onChange={handleChange}
-              placeholder={
-                isHi
-                  ? "किसान, छात्र, एसएचजी सदस्य..."
-                  : "farmer, student, SHG member..."
-              }
-              className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm outline-none focus:border-emerald-500"
-            />
-          </div>
 
-          {/* Footer */}
-          <div className="sm:col-span-2 space-y-2 mt-2">
-            {error && <p className="text-[11px] text-red-500">{error}</p>}
-            {successMsg && (
-              <p className="text-[11px] text-emerald-600">{successMsg}</p>
+            {/* Interest Tag */}
+            <div className="sm:col-span-2">
+              <label className="flex flex-col">
+                <p className="pb-2 text-sm font-medium dark:text-gray-200">
+                  {isHi ? "रुचि टैग" : "Interest Tag"}
+                </p>
+                <input
+                  name="interest_tag"
+                  value={form.interest_tag}
+                  onChange={handleChange}
+                  placeholder={isHi ? "किसान, छात्र..." : "farmer, student..."}
+                  className="h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-[#FEF6EF] dark:bg-[#1a1a1a]"
+                />
+              </label>
+            </div>
+
+            {/* Messages */}
+            {error && (
+              <p className="sm:col-span-2 text-sm text-red-500">{error}</p>
             )}
 
-            <div className="flex items-center justify-between gap-2">
+            {successMsg && (
+              <p className="sm:col-span-2 text-sm text-green-600">
+                {successMsg}
+              </p>
+            )}
+
+            {/* BUTTONS */}
+            <div className="sm:col-span-2 flex items-center justify-between mt-4">
               <button
                 type="button"
                 onClick={() => navigate(-1)}
-                className="px-4 py-2 rounded-xl border border-gray-300 text-sm"
+                className="h-12 px-6 rounded-xl border border-gray-400 dark:border-gray-500 text-sm dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 {isHi ? "रद्द करें" : "Cancel"}
               </button>
@@ -377,7 +386,7 @@ export default function EditProfileScreen() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-4 py-2 rounded-xl bg-[#166534] text-white text-sm font-semibold disabled:opacity-60"
+                className="h-12 px-6 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-60"
               >
                 {saving
                   ? isHi
@@ -385,12 +394,12 @@ export default function EditProfileScreen() {
                     : "Saving..."
                   : isHi
                   ? "बदलाव सेव करें"
-                  : "Save changes"}
+                  : "Save Changes"}
               </button>
             </div>
-          </div>
-        </form>
-      </div>
-    </section>
+          </form>
+        </div>
+      </section>
+    </SidebarContainer>
   );
 }

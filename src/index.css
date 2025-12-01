@@ -2,12 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global */
-html,
-body {
-  @apply bg-softBeige text-gray-900 font-sans antialiased;
+/* Default (light mode) */
+:root {
+  --primary: #166534;
 }
 
+/* Dark mode override */
+.dark {
+  --primary: #22C55E;
+}
+
+/* Utility shortcut */
+@layer utilities {
+  .text-primary {
+    color: var(--primary);
+  }
+  .bg-primary {
+    background-color: var(--primary);
+  }
+  .border-primary {
+    border-color: var(--primary);
+  }
+}
+
+/* Apply global theme background + font */
+@layer base {
+  html, body {
+    @apply bg-background-light dark:bg-background-dark 
+           text-text-light dark:text-text-dark 
+           font-sans antialiased;
+  }
+}
 
 html,
 body,
@@ -17,7 +42,10 @@ body,
 
 body {
   margin: 0;
-  overflow: hidden; /* ★ No page scroll */
 }
 
-
+html, body {
+  height: full;
+  overflow-x: hidden;
+  overflow-y: auto;
+}

@@ -4,6 +4,10 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/useAuth.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 
+import SidebarContainer from "../components/layout/SidebarContainer.jsx";
+import LeftSidebar from "../components/layout/LeftSidebar.jsx";
+import RightSidebar from "../components/layout/RightSidebar.jsx";
+
 export default function LoginScreen() {
   const { login, loadingUser } = useAuth();
   const { lang } = useLanguage();
@@ -15,12 +19,14 @@ export default function LoginScreen() {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
     if (!username || !password) {
       setError(
         isHi
@@ -29,14 +35,16 @@ export default function LoginScreen() {
       );
       return;
     }
+
     try {
       setSubmitting(true);
       await login(username, password);
       navigate(from, { replace: true });
     } catch (err) {
-      console.error(err);
       setError(
-        isHi ? "लॉगिन असफल रहा, कृपया फिर से प्रयास करें।" : err.message || "Login failed"
+        isHi
+          ? "लॉगिन असफल रहा, कृपया फिर से प्रयास करें।"
+          : err.message || "Login failed"
       );
     } finally {
       setSubmitting(false);
@@ -44,77 +52,111 @@ export default function LoginScreen() {
   };
 
   return (
-    <section className="flex justify-center mt-8 px-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-soft border border-cardBorder px-6 py-6 space-y-4 text-left">
-        <h1 className="text-xl font-semibold text-textMain">
-          {isHi
-            ? "पंचायत सहायिका में लॉगिन करें"
-            : "Login to Panchayat Sahayika"}
-        </h1>
-        <p className="text-[12px] text-gray-600">
-          {isHi
-            ? "अपना खाता उपयोग करके आपके लिए व्यक्तिगत योजनाएँ, ट्रेनिंग और गाँव की स्थिति देखें।"
-            : "Use your account to see personalised schemes, trainings and village status."}
-        </p>
+    <SidebarContainer
+      leftContent={<LeftSidebar />}
+      rightContent={<RightSidebar />}
+    >
+      {/* Center Section */}
+      <section className="flex justify-center px-4 w-full">
+        <div className="w-full max-w-2xl bg-white dark:bg-[#2d2d2d] rounded-2xl shadow-soft border border-gray-200 dark:border-gray-700 p-8 md:p-12 text-center">
+          {/* Title */}
+          <h2 className="text-3xl font-extrabold text-textMain dark:text-white">
+            {isHi ? "अपने खाते में लॉग इन करें" : "Log In to Your Account"}
+          </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-3 text-sm">
-          <div className="space-y-1">
-            <label className="block text-[11px] font-medium text-gray-700">
-              {isHi ? "उपयोगकर्ता नाम" : "Username"}
-            </label>
-            <input
-              className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm outline-none focus:border-emerald-500"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-            />
+          <p className="mt-2 text-textSubtle dark:text-gray-300 text-sm">
+            {isHi ? "अपना पर्सनलाइज़्ड डैशबोर्ड देखें" : "Access your personalised dashboard"}
+          </p>
+
+          <form onSubmit={handleSubmit} className="mt-8 space-y-6 text-left">
+            {/* Username / Email */}
+            <div className="space-y-2">
+              <label className="font-medium text-sm text-textMain dark:text-gray-200">
+                {isHi
+                  ? "उपयोगकर्ता नाम"
+                  : "Username"}{" "}
+              </label>
+
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full h-14 px-4 rounded-xl bg-[#FEF6EF] dark:bg-[#1a1a1a] border border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-primary/50 focus:outline-none placeholder:text-gray-400"
+                placeholder={
+                  isHi
+                    ? "अपना उपयोगकर्ता नाम दर्ज करें"
+                    : "Enter username"
+                }
+              />
+            </div>
+
+            {/* Password */}
+            <div className="space-y-2">
+              <label className="font-medium text-sm text-textMain dark:text-gray-200">
+                {isHi ? "पासवर्ड" : "Password"}
+              </label>
+
+              <div className="flex items-center border border-gray-300 dark:border-gray-700 rounded-xl bg-[#FEF6EF] dark:bg-[#1a1a1a] focus-within:ring-2 focus-within:ring-primary/50">
+                <input
+                  type={showPass ? "text" : "password"}
+                  className="w-full h-14 px-4 rounded-xl bg-transparent focus:outline-none placeholder:text-gray-400"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={
+                    isHi ? "अपना पासवर्ड दर्ज करें" : "Enter password"
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="px-4 text-gray-500 dark:text-gray-300"
+                >
+                  <span className="material-symbols-outlined">
+                    {showPass ? "visibility" : "visibility_off"}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <p className="text-sm text-red-500 text-center">{error}</p>
+            )}
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={submitting || loadingUser}
+              className="flex w-full items-center justify-center h-14 bg-primary text-white rounded-xl font-bold text-lg hover:bg-primary/90 disabled:opacity-60 transition"
+            >
+              {submitting || loadingUser
+                ? isHi
+                  ? "लॉगिन हो रहा है..."
+                  : "Logging in..."
+                : isHi
+                ? "लॉगिन करें"
+                : "Log In"}
+            </button>
+          </form>
+
+          {/* Forgot Password */}
+          <div className="mt-6">
+            <button className="text-primary font-medium hover:underline text-sm">
+              {isHi ? "पासवर्ड भूल गए?" : "Forgot Password?"}
+            </button>
           </div>
 
-          <div className="space-y-1">
-            <label className="block text-[11px] font-medium text-gray-700">
-              {isHi ? "पासवर्ड" : "Password"}
-            </label>
-            <input
-              type="password"
-              className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm outline-none focus:border-emerald-500"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
+          {/* Register Link */}
+          <div className="mt-4 text-sm text-gray-600 dark:text-gray-300">
+            {isHi ? "नए हैं?" : "New here?"}{" "}
+            <button
+              onClick={() => navigate("/register")}
+              className="text-primary font-semibold hover:underline"
+            >
+              {isHi ? "खाता बनाएं" : "Create an account"}
+            </button>
           </div>
-
-          {error && (
-            <p className="text-[11px] text-red-500">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={submitting || loadingUser}
-            className="w-full mt-2 inline-flex items-center justify-center px-4 py-2 rounded-xl bg-[#166534] text-white text-sm font-semibold disabled:opacity-60"
-          >
-            {submitting || loadingUser
-              ? isHi
-                ? "लॉगिन हो रहा है..."
-                : "Logging in..."
-              : isHi
-              ? "लॉगिन"
-              : "Login"}
-          </button>
-        </form>
-
-        <p className="text-[11px] text-gray-600">
-          {isHi ? "पहली बार आ रहे हैं?" : "New here?"}{" "}
-          <button
-            type="button"
-            onClick={() => navigate("/register")}
-            className="text-[#166534] underline"
-          >
-            {isHi ? "खाता बनाएं" : "Create an account"}
-          </button>
-        </p>
-      </div>
-    </section>
+        </div>
+      </section>
+    </SidebarContainer>
   );
 }
